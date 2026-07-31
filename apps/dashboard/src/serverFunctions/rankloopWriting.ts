@@ -76,6 +76,7 @@ export const saveRankloopWriterSettings = createServerFn({ method: "POST" })
       quotaStartDate: data.quotaStartDate,
       voiceCardMd: data.voiceCardMd,
       trustDial: data.trustDial,
+      writerMode: data.writerMode,
     });
     waitUntil(
       captureServerEvent({
@@ -88,6 +89,7 @@ export const saveRankloopWriterSettings = createServerFn({ method: "POST" })
           catchup_cap: data.catchupCap,
           quota_on: data.quotaStartDate !== null,
           trust_dial: data.trustDial,
+          writer_mode: data.writerMode,
         },
       }),
     );

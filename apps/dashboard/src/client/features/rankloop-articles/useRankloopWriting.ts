@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useArticlesPolling } from "@/client/features/rankloop-articles/useArticlesPolling";
+import { useWriterMode } from "@/client/features/rankloop-articles/useWriterMode";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   getRankloopWriterAccess,
@@ -33,6 +34,10 @@ export function useRankloopWriting(projectId: string) {
   });
   const access = accessQuery.data ?? null;
 
+  // Decides whether the row action is a button at all — in agent mode there is
+  // nothing here to press.
+  const writerMode = useWriterMode(projectId);
+
   const articlesQuery = useArticlesPolling(projectId);
   const articles = new Map(
     (articlesQuery.data ?? []).map((article) => [article.proposalId, article]),
@@ -63,6 +68,7 @@ export function useRankloopWriting(projectId: string) {
   return {
     access,
     articles,
+    writerMode,
     confirming,
     isStarting: startMutation.isPending,
     // Optimistic-free by design: until the access read resolves we assume a

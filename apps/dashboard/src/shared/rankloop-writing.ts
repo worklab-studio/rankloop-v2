@@ -14,6 +14,9 @@ export const WRITER_SETTINGS_DEFAULTS = {
   quotaStartDate: null,
   voiceCardMd: null,
   trustDial: "titles",
+  // Every project that existed before the agent path did is writing through
+  // this app's writer, so that is what a missing row means.
+  writerMode: "api",
 } as const;
 
 /** Ceilings for the settings form and the server validator. Two a day is the

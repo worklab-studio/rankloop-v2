@@ -428,6 +428,15 @@ export const writerSettings = pgTable("writer_settings", {
   trustDial: text("trust_dial", { enum: ["titles", "drafts", "autopilot"] })
     .notNull()
     .default("titles"),
+  // Who holds the pen. 'api' is this app writing with the operator's key and
+  // metering every call; 'agent' is the user's own coding agent pulling the
+  // brief over MCP and writing in their repo, where no key of ours is involved.
+  // Per project rather than per account because the same person runs pSEO
+  // volume on one site and hand-edited posts on another, and the queue, the
+  // laws and the receipts are identical either way.
+  writerMode: text("writer_mode", { enum: ["api", "agent"] })
+    .notNull()
+    .default("api"),
   // Per-project model override. Null means the deployment's OPENROUTER_MODEL,
   // which is the honest default: the key is the operator's, so the model that
   // key is provisioned for should be too. A column default would pin a slug

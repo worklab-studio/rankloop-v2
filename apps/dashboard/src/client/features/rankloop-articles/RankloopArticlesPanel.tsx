@@ -8,6 +8,7 @@ import {
 import { RankloopArticlesTable } from "@/client/features/rankloop-articles/RankloopArticlesTable";
 import { RankloopPublishedTable } from "@/client/features/rankloop-articles/RankloopPublishedTable";
 import { useArticlesPolling } from "@/client/features/rankloop-articles/useArticlesPolling";
+import { useWriterMode } from "@/client/features/rankloop-articles/useWriterMode";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import { getRankloopPublishedArticles } from "@/serverFunctions/rankloopPublishArticle";
 
@@ -22,6 +23,16 @@ const EMPTY_COPY: Record<ArticlesPanelTab, string> = {
     "Nothing failed. A draft that misses the laws three times lands here with its report intact.",
   published:
     "Nothing published yet — open a draft that passed and press Publish. Its hub is created first.",
+};
+
+// Agent mode replaces the two sentences that name a button this screen no
+// longer shows. Everything else about the queue is the same, so only these
+// two are overridden.
+const AGENT_EMPTY_COPY: Partial<Record<ArticlesPanelTab, string>> = {
+  writing:
+    "Nothing being written here — in agent mode your own agent writes the approved proposals in your repo.",
+  published:
+    "Nothing published yet — a post lands here when your agent reports it with rankloop_publish_report.",
 };
 
 function ArticleTabButton({
@@ -82,6 +93,7 @@ function ArticlesLoadingState() {
  */
 export function RankloopArticlesPanel({ projectId }: { projectId: string }) {
   const [tab, setTab] = useState<ArticlesPanelTab>("writing");
+  const writerMode = useWriterMode(projectId);
   const articlesQuery = useArticlesPolling(projectId);
   const publishedQuery = useQuery({
     queryKey: ["rankloopPublishedArticles", projectId],
@@ -145,16 +157,23 @@ export function RankloopArticlesPanel({ projectId }: { projectId: string }) {
       </div>
 
       {isEmpty ? (
-        <p className="p-6 text-sm text-base-content/60">{EMPTY_COPY[tab]}</p>
+        <p className="p-6 text-sm text-base-content/60">
+          {(writerMode === "agent" ? AGENT_EMPTY_COPY[tab] : null) ??
+            EMPTY_COPY[tab]}
+        </p>
       ) : tab === "published" ? (
         <RankloopPublishedTable rows={published} projectId={projectId} />
       ) : (
         <RankloopArticlesTable rows={queued} projectId={projectId} />
       )}
 
+      {/* The middle fragment is the constant: whoever wrote the draft, the
+          thing that grades it has no model on its dependency graph. The two
+          around it describe whose attempts and whose bill, so they change. */}
       <p className="border-t border-base-300 px-4 py-3 text-[11px] text-base-content/45">
-        one draft, then up to two repair passes · the laws that judge it make no
-        model call · every generation is metered into the spend ledger
+        {writerMode === "agent"
+          ? "your agent iterates against rankloop_check as often as it likes · the laws that judge it make no model call · nothing on this side spends"
+          : "one draft, then up to two repair passes · the laws that judge it make no model call · every generation is metered into the spend ledger"}
       </p>
     </div>
   );

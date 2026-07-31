@@ -289,6 +289,7 @@ export function RankloopProposalsPanel({ projectId }: { projectId: string }) {
             projectId={projectId}
             hasConnection={hasConnection}
             writing={{
+              writerMode: writing.writerMode,
               providerConfigured: writing.providerConfigured,
               articles: writing.articles,
               pendingProposalId: writing.pendingProposalId,
@@ -317,9 +318,16 @@ export function RankloopProposalsPanel({ projectId }: { projectId: string }) {
             onViewBrief={(row) => setBriefing(row)}
           />
         )}
+        {/* The last fragment is the one fact the two writers do not share:
+            what happens to an approved row. Everything before it — how rows
+            arrive, the quota, the expiry — is true whichever mode is set, and
+            saying so here is what makes mixing the two legible. */}
         <p className="border-t border-base-300 px-4 py-3 text-[11px] text-base-content/45">
           optimize rows computed after each search memory sync · net-new picks
           run daily under your quota · proposals expire after 10 days
+          {writing.writerMode === "agent"
+            ? " · approved rows stay approved until your agent reports what it shipped"
+            : null}
         </p>
       </div>
       {applying ? (

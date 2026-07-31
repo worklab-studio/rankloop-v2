@@ -16,6 +16,7 @@ import {
 } from "@/client/features/rankloop-articles/RankloopProposalChips";
 import { RankloopPushGuidance } from "@/client/features/rankloop-articles/RankloopPushGuidance";
 import { RankloopWriteAction } from "@/client/features/rankloop-articles/RankloopWriteAction";
+import type { WriterMode } from "@/client/features/rankloop-articles/writerMode.logic";
 import type { getRankloopProposals } from "@/serverFunctions/rankloopProposals";
 import type { getRankloopArticles } from "@/serverFunctions/rankloopWriter";
 
@@ -27,6 +28,7 @@ type Decision = "approved" | "declined";
 // cost it one prop rather than four. `articles` is keyed by proposalId — the
 // partial unique makes that a one-to-one for everything not yet published.
 type WritingProps = {
+  writerMode: WriterMode;
   providerConfigured: boolean;
   articles: Map<string, ArticleRow>;
   pendingProposalId: string | null;
@@ -169,6 +171,7 @@ function RowActions({
       <RankloopWriteAction
         projectId={projectId}
         article={writing.articles.get(row.id)}
+        writerMode={writing.writerMode}
         providerConfigured={writing.providerConfigured}
         isPending={writing.pendingProposalId === row.id}
         onWrite={() => writing.onWrite(row)}

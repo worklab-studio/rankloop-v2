@@ -4,6 +4,7 @@ import { getAuthMode } from "@/lib/auth-mode";
 import { captureClientEvent } from "@/client/lib/posthog";
 import { ClaudeIcon, CodexIcon } from "@/client/features/ai-mcp/AgentIcons";
 import { AvailableTools } from "@/client/features/ai-mcp/AvailableTools";
+import { RankloopSection } from "@/client/features/ai-mcp/RankloopSection";
 import {
   CodeBlock,
   Collapsible,
@@ -21,6 +22,7 @@ const SKILL_NAMES = [
   "competitive-landscape",
   "competitor-analysis",
   "link-prospecting",
+  "rankloop",
 ];
 const SKILLS_INSTALL = `npx skills add every-app/open-seo`;
 const ALL_SKILLS_INSTALL = `npx skills add every-app/open-seo --skill '*'`;
@@ -283,6 +285,8 @@ function AiPage() {
             <AvailableTools />
           </div>
         </section>
+
+        <RankloopSection />
 
         <section className="mt-12">
           <h2 className="text-base font-semibold">Sam: AI SEO teammate</h2>

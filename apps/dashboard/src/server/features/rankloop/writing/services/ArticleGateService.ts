@@ -1,4 +1,5 @@
 import { parseMdPost, slugify } from "@rankloop/engine";
+import type { Post } from "@rankloop/engine";
 import { PagePlanRepository } from "@/server/features/rankloop/page-plan/repositories/PagePlanRepository";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import {
@@ -21,6 +22,12 @@ import { parseTemplateContract } from "@/types/schemas/rankloopPagePlan";
 // and nothing else; this file feeds it the site's real pages and page types
 // and writes down what it decided. The split is why the grader can be run
 // against fixtures, and why nothing provider-shaped can ever reach it.
+//
+// `gradeDraft` is the whole of that wiring and is exported, because the MCP
+// `rankloop_check` tool grades a draft an agent wrote in its own repo and must
+// answer with the same report this app's own writer would receive. Two callers,
+// one function: a second assembly — a different page-type lookup, a different
+// corpus of linkable pages — would fork the laws while every test still passed.
 
 type GateOutcome = {
   passed: boolean;
@@ -36,22 +43,27 @@ type GateOutcome = {
  * carried from the brief because the gate needs the site as it is now: a link
  * to a post that was deleted this morning does not resolve, and a report that
  * said otherwise would be wrong in the user's favour.
+ *
+ * Nothing is written: the caller decides whether this verdict belongs on a row.
+ * `checkedAt` is a parameter for the same reason it is one on `runGate` — the
+ * same draft has to grade identically in a test, in a re-run, and on whichever
+ * of the two callers asked.
  */
-async function gate(input: {
+async function gradeDraft(input: {
   projectId: string;
-  articleId: string;
+  /** The type whose contract, taxonomy slot and URL pattern the laws come
+   *  from. Null grades against the default band, exactly as an article with no
+   *  page type does. */
+  pageTypeId: string | null;
+  /** Fallback for the slug when the draft's frontmatter carries no title. */
+  keyword: string;
   markdown: string;
-}): Promise<GateOutcome> {
-  const article = await ArticleRepository.getArticleById(
-    input.projectId,
-    input.articleId,
-  );
-  if (!article) throw new AppError("NOT_FOUND", "Article not found.");
-
+  checkedAt: string;
+}): Promise<{ slug: string; post: Post; report: LawReport }> {
   const [project, pageType, allTypes, pages] = await Promise.all([
     ProjectRepository.getProjectById(input.projectId),
-    article.pageTypeId
-      ? PagePlanRepository.getPageTypeById(input.projectId, article.pageTypeId)
+    input.pageTypeId
+      ? PagePlanRepository.getPageTypeById(input.projectId, input.pageTypeId)
       : null,
     PagePlanRepository.getPageTypes(input.projectId),
     BriefRepository.getLinkablePages(input.projectId),
@@ -63,7 +75,7 @@ async function gate(input: {
   // serve. Derived from THIS draft rather than from the row: a repair that
   // rewrote the title must not be graded against the last one's slug.
   const post = parseMdPost("draft", input.markdown);
-  const slug = slugify(post.title || article.keyword);
+  const slug = slugify(post.title || input.keyword);
 
   const report = runGate({
     // `validate` builds its resolvable-slug set from the corpus it is handed,
@@ -83,6 +95,29 @@ async function gate(input: {
       .filter((type) => type.status === "approved")
       .map((type) => type.name),
     pages,
+    checkedAt: input.checkedAt,
+  });
+
+  return { slug, post, report };
+}
+
+/** The stored-article path: grade, then write the verdict onto the row. */
+async function gate(input: {
+  projectId: string;
+  articleId: string;
+  markdown: string;
+}): Promise<GateOutcome> {
+  const article = await ArticleRepository.getArticleById(
+    input.projectId,
+    input.articleId,
+  );
+  if (!article) throw new AppError("NOT_FOUND", "Article not found.");
+
+  const { post, report } = await gradeDraft({
+    projectId: input.projectId,
+    pageTypeId: article.pageTypeId,
+    keyword: article.keyword,
+    markdown: input.markdown,
     checkedAt: new Date().toISOString(),
   });
 
@@ -157,5 +192,6 @@ async function recheck(input: {
 
 export const ArticleGateService = {
   gate,
+  gradeDraft,
   recheck,
 };

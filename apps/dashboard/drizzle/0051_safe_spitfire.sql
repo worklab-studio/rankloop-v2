@@ -1,0 +1,1 @@
+ALTER TABLE `writer_settings` ADD `writer_mode` text DEFAULT 'api' NOT NULL;

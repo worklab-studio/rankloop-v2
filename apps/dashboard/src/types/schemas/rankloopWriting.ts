@@ -55,4 +55,7 @@ export const saveRankloopWriterSettingsSchema = z.object({
     .nullable(),
   voiceCardMd: z.string().max(4000).nullable(),
   trustDial: z.enum(writerSettings.trustDial.enumValues),
+  // Derived from the column so the two spellings of "who writes here" can
+  // never drift apart.
+  writerMode: z.enum(writerSettings.writerMode.enumValues),
 });

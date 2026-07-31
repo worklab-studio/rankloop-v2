@@ -48,6 +48,7 @@ async function upsertSettings(input: {
   quotaStartDate: string | null;
   voiceCardMd: string | null;
   trustDial: "titles" | "drafts" | "autopilot";
+  writerMode: "api" | "agent";
 }): Promise<void> {
   const { projectId, ...dials } = input;
   const now = new Date().toISOString();

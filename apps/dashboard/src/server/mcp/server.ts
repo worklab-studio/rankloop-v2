@@ -17,6 +17,16 @@ import {
   getRankedKeywordsTool,
   searchLocalBusinessesTool,
 } from "@/server/mcp/tools/dataforseo-research-tools";
+import {
+  rankloopProposalsTool,
+  rankloopReceiptsTool,
+  rankloopStatusTool,
+} from "@/server/mcp/tools/rankloop-tools";
+import {
+  rankloopBriefTool,
+  rankloopCheckTool,
+  rankloopPublishReportTool,
+} from "@/server/mcp/tools/rankloop-writer-tools";
 import { researchKeywordsTool } from "@/server/mcp/tools/research-keywords";
 import { saveKeywordsTool } from "@/server/mcp/tools/save-keywords";
 import {
@@ -251,6 +261,63 @@ export function registerOpenSeoMcpTools(server: McpServer) {
       getAuditPagesTool.name,
       getAuditPagesTool.config.outputSchema,
       getAuditPagesTool.handler,
+    ),
+  );
+  // The rankloop agent path (spec 0023), in the order an agent walks it:
+  // status → proposals → brief → check → publish report, with receipts as the
+  // answer to "did any of that work".
+  server.registerTool(
+    rankloopStatusTool.name,
+    rankloopStatusTool.config,
+    instrumentMcpToolHandler(
+      rankloopStatusTool.name,
+      rankloopStatusTool.config.outputSchema,
+      rankloopStatusTool.handler,
+    ),
+  );
+  server.registerTool(
+    rankloopProposalsTool.name,
+    rankloopProposalsTool.config,
+    instrumentMcpToolHandler(
+      rankloopProposalsTool.name,
+      rankloopProposalsTool.config.outputSchema,
+      rankloopProposalsTool.handler,
+    ),
+  );
+  server.registerTool(
+    rankloopBriefTool.name,
+    rankloopBriefTool.config,
+    instrumentMcpToolHandler(
+      rankloopBriefTool.name,
+      rankloopBriefTool.config.outputSchema,
+      rankloopBriefTool.handler,
+    ),
+  );
+  server.registerTool(
+    rankloopCheckTool.name,
+    rankloopCheckTool.config,
+    instrumentMcpToolHandler(
+      rankloopCheckTool.name,
+      rankloopCheckTool.config.outputSchema,
+      rankloopCheckTool.handler,
+    ),
+  );
+  server.registerTool(
+    rankloopPublishReportTool.name,
+    rankloopPublishReportTool.config,
+    instrumentMcpToolHandler(
+      rankloopPublishReportTool.name,
+      rankloopPublishReportTool.config.outputSchema,
+      rankloopPublishReportTool.handler,
+    ),
+  );
+  server.registerTool(
+    rankloopReceiptsTool.name,
+    rankloopReceiptsTool.config,
+    instrumentMcpToolHandler(
+      rankloopReceiptsTool.name,
+      rankloopReceiptsTool.config.outputSchema,
+      rankloopReceiptsTool.handler,
     ),
   );
 }

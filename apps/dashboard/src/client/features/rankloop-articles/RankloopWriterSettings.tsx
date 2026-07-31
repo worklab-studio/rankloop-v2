@@ -1,8 +1,11 @@
 import { useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Collapsible } from "@/client/features/ai-mcp/SetupControls";
+import { OptionCards } from "@/client/features/rankloop-articles/RankloopOptionCards";
+import type { WriterMode } from "@/client/features/rankloop-articles/writerMode.logic";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   getRankloopWriterSettings,
@@ -34,45 +37,25 @@ const TRUST_DIAL_OPTIONS: { value: TrustDial; title: string; body: string }[] =
     },
   ];
 
-function TrustDialCards({
-  value,
-  onChange,
-}: {
-  value: TrustDial;
-  onChange: (next: TrustDial) => void;
-}) {
-  return (
-    <div className="grid gap-2 md:grid-cols-3">
-      {TRUST_DIAL_OPTIONS.map((option) => {
-        const selected = value === option.value;
-        return (
-          <label
-            key={option.value}
-            className={`flex cursor-pointer gap-2.5 rounded-lg border p-3 transition-colors ${
-              selected
-                ? "border-primary bg-primary/5"
-                : "border-base-300 bg-base-200/20 hover:bg-base-200/40"
-            }`}
-          >
-            <input
-              type="radio"
-              name="rankloop-trust-dial"
-              className="radio radio-sm mt-0.5 shrink-0"
-              checked={selected}
-              onChange={() => onChange(option.value)}
-            />
-            <span className="flex min-w-0 flex-col gap-0.5">
-              <span className="text-sm font-medium">{option.title}</span>
-              <span className="text-xs text-base-content/55">
-                {option.body}
-              </span>
-            </span>
-          </label>
-        );
-      })}
-    </div>
-  );
-}
+// Which writer holds the pen. Both cards name what the mode costs and where
+// the words come from, because that is the actual difference — the queue, the
+// laws and the receipts are the same on either side.
+const WRITER_MODE_OPTIONS: {
+  value: WriterMode;
+  title: string;
+  body: string;
+}[] = [
+  {
+    value: "api",
+    title: "rankloop writes",
+    body: "Drafts here with your OpenRouter key, checks the laws, and stops where the trust dial says. Every call is metered into the spend ledger.",
+  },
+  {
+    value: "agent",
+    title: "Your agent writes",
+    body: "Your coding agent pulls approved proposals and briefs over MCP, writes the page in your own repo, and reports what it shipped. Nothing here spends.",
+  },
+];
 
 export function RankloopWriterSettings({ projectId }: { projectId: string }) {
   const queryClient = useQueryClient();
@@ -81,6 +64,7 @@ export function RankloopWriterSettings({ projectId }: { projectId: string }) {
   const [quotaStartDate, setQuotaStartDate] = useState("");
   const [voiceCardMd, setVoiceCardMd] = useState("");
   const [trustDial, setTrustDial] = useState<TrustDial>("titles");
+  const [writerMode, setWriterMode] = useState<WriterMode>("api");
   const [synced, setSynced] = useState(false);
 
   const settingsQuery = useQuery({
@@ -99,6 +83,7 @@ export function RankloopWriterSettings({ projectId }: { projectId: string }) {
       setQuotaStartDate(settings.quotaStartDate ?? "");
       setVoiceCardMd(settings.voiceCardMd ?? "");
       setTrustDial(settings.trustDial);
+      setWriterMode(settings.writerMode);
     }
     setSynced(true);
   }
@@ -115,6 +100,7 @@ export function RankloopWriterSettings({ projectId }: { projectId: string }) {
           quotaStartDate: quotaStartDate.trim() || null,
           voiceCardMd: voiceCardMd.trim() || null,
           trustDial,
+          writerMode,
         },
       }),
     onSuccess: () => {
@@ -144,8 +130,30 @@ export function RankloopWriterSettings({ projectId }: { projectId: string }) {
       <Collapsible
         id="writing"
         title="Writing"
-        subtitle="How much you publish, in whose voice, and how far it runs alone"
+        subtitle="Who writes, how much you publish, in whose voice, and how far it runs alone"
       >
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-wide text-base-content/60">
+            Who writes
+          </p>
+          <OptionCards
+            name="rankloop-writer-mode"
+            options={WRITER_MODE_OPTIONS}
+            value={writerMode}
+            columns={2}
+            onChange={setWriterMode}
+          />
+          <p className="text-xs text-base-content/55">
+            Same queue, same laws, same receipts either way &mdash; a project
+            can run pSEO volume through rankloop and editorial through its own
+            agent. In agent mode an approved proposal stays approved until the
+            agent reports what it shipped.{" "}
+            <Link to="/ai" className="link link-primary font-medium">
+              Set up the tools and the skill in AI &amp; MCP →
+            </Link>
+          </p>
+        </div>
+
         <div className="flex flex-wrap gap-4">
           <label className="flex flex-col gap-1.5 text-sm">
             <span className="font-medium">Posts per day</span>
@@ -208,10 +216,19 @@ export function RankloopWriterSettings({ projectId }: { projectId: string }) {
           <p className="text-xs font-medium uppercase tracking-wide text-base-content/60">
             Trust dial
           </p>
-          <TrustDialCards value={trustDial} onChange={setTrustDial} />
+          <OptionCards
+            name="rankloop-trust-dial"
+            options={TRUST_DIAL_OPTIONS}
+            value={trustDial}
+            columns={3}
+            onChange={setTrustDial}
+          />
           <p className="text-xs text-base-content/55">
             Saved now, not yet honored &mdash; today every proposal stops at the
             brief, whichever card is selected.
+            {writerMode === "agent"
+              ? " In agent mode it applies to nothing: your agent decides when to open the PR, and the laws still decide what may merge."
+              : null}
           </p>
         </div>
 
