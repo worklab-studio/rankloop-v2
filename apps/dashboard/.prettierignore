@@ -1,0 +1,22 @@
+**/build
+**/public
+pnpm-lock.yaml
+# no parser for dotenv files; explicit `prettier <file>` aborts without this
+.env*
+routeTree.gen.ts
+.opencode/package.json
+
+# vendored skills are hash-pinned in skills-lock.json; don't reformat them
+.agents/skills/
+dist/
+drizzle/
+drizzle-pg/
+planning/
+worker-configuration.d.ts
+web/
+
+# specs are hand-wrapped prose and they are the law an implementation is
+# reviewed against; the markdown printer rewrites them (a line opening with
+# `>= cutoff)` in 0018 becomes a blockquote, i.e. a different sentence), so
+# the text stays exactly as written.
+specs/

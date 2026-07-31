@@ -1,0 +1,1 @@
+ALTER TABLE "writer_settings" ADD COLUMN "model" text;

@@ -1,0 +1,2047 @@
+{
+ "meta": {
+  "generator": "tools/gen-parity-fixtures.py",
+  "rankloopPath": "/Users/worklab/Rankloop",
+  "python": "3.14.0",
+  "today": "2026-07-30"
+ },
+ "score": [
+  {
+   "volume": null,
+   "difficulty": null,
+   "intent": null,
+   "expected": 1.0
+  },
+  {
+   "volume": null,
+   "difficulty": null,
+   "intent": "commercial",
+   "expected": 1.3
+  },
+  {
+   "volume": null,
+   "difficulty": null,
+   "intent": "transactional",
+   "expected": 1.4
+  },
+  {
+   "volume": null,
+   "difficulty": null,
+   "intent": "informational",
+   "expected": 1.0
+  },
+  {
+   "volume": null,
+   "difficulty": null,
+   "intent": "navigational",
+   "expected": 0.6
+  },
+  {
+   "volume": null,
+   "difficulty": null,
+   "intent": "unknown-intent",
+   "expected": 1.0
+  },
+  {
+   "volume": null,
+   "difficulty": 0,
+   "intent": null,
+   "expected": 2.0
+  },
+  {
+   "volume": null,
+   "difficulty": 0,
+   "intent": "commercial",
+   "expected": 2.6
+  },
+  {
+   "volume": null,
+   "difficulty": 0,
+   "intent": "transactional",
+   "expected": 2.8
+  },
+  {
+   "volume": null,
+   "difficulty": 0,
+   "intent": "informational",
+   "expected": 2.0
+  },
+  {
+   "volume": null,
+   "difficulty": 0,
+   "intent": "navigational",
+   "expected": 1.2
+  },
+  {
+   "volume": null,
+   "difficulty": 0,
+   "intent": "unknown-intent",
+   "expected": 2.0
+  },
+  {
+   "volume": null,
+   "difficulty": 15,
+   "intent": null,
+   "expected": 1.7
+  },
+  {
+   "volume": null,
+   "difficulty": 15,
+   "intent": "commercial",
+   "expected": 2.21
+  },
+  {
+   "volume": null,
+   "difficulty": 15,
+   "intent": "transactional",
+   "expected": 2.38
+  },
+  {
+   "volume": null,
+   "difficulty": 15,
+   "intent": "informational",
+   "expected": 1.7
+  },
+  {
+   "volume": null,
+   "difficulty": 15,
+   "intent": "navigational",
+   "expected": 1.02
+  },
+  {
+   "volume": null,
+   "difficulty": 15,
+   "intent": "unknown-intent",
+   "expected": 1.7
+  },
+  {
+   "volume": null,
+   "difficulty": 30,
+   "intent": null,
+   "expected": 1.4
+  },
+  {
+   "volume": null,
+   "difficulty": 30,
+   "intent": "commercial",
+   "expected": 1.82
+  },
+  {
+   "volume": null,
+   "difficulty": 30,
+   "intent": "transactional",
+   "expected": 1.96
+  },
+  {
+   "volume": null,
+   "difficulty": 30,
+   "intent": "informational",
+   "expected": 1.4
+  },
+  {
+   "volume": null,
+   "difficulty": 30,
+   "intent": "navigational",
+   "expected": 0.84
+  },
+  {
+   "volume": null,
+   "difficulty": 30,
+   "intent": "unknown-intent",
+   "expected": 1.4
+  },
+  {
+   "volume": null,
+   "difficulty": 50,
+   "intent": null,
+   "expected": 1.0
+  },
+  {
+   "volume": null,
+   "difficulty": 50,
+   "intent": "commercial",
+   "expected": 1.3
+  },
+  {
+   "volume": null,
+   "difficulty": 50,
+   "intent": "transactional",
+   "expected": 1.4
+  },
+  {
+   "volume": null,
+   "difficulty": 50,
+   "intent": "informational",
+   "expected": 1.0
+  },
+  {
+   "volume": null,
+   "difficulty": 50,
+   "intent": "navigational",
+   "expected": 0.6
+  },
+  {
+   "volume": null,
+   "difficulty": 50,
+   "intent": "unknown-intent",
+   "expected": 1.0
+  },
+  {
+   "volume": null,
+   "difficulty": 85,
+   "intent": null,
+   "expected": 0.3
+  },
+  {
+   "volume": null,
+   "difficulty": 85,
+   "intent": "commercial",
+   "expected": 0.39
+  },
+  {
+   "volume": null,
+   "difficulty": 85,
+   "intent": "transactional",
+   "expected": 0.42
+  },
+  {
+   "volume": null,
+   "difficulty": 85,
+   "intent": "informational",
+   "expected": 0.3
+  },
+  {
+   "volume": null,
+   "difficulty": 85,
+   "intent": "navigational",
+   "expected": 0.18
+  },
+  {
+   "volume": null,
+   "difficulty": 85,
+   "intent": "unknown-intent",
+   "expected": 0.3
+  },
+  {
+   "volume": null,
+   "difficulty": 100,
+   "intent": null,
+   "expected": 0.0
+  },
+  {
+   "volume": null,
+   "difficulty": 100,
+   "intent": "commercial",
+   "expected": 0.0
+  },
+  {
+   "volume": null,
+   "difficulty": 100,
+   "intent": "transactional",
+   "expected": 0.0
+  },
+  {
+   "volume": null,
+   "difficulty": 100,
+   "intent": "informational",
+   "expected": 0.0
+  },
+  {
+   "volume": null,
+   "difficulty": 100,
+   "intent": "navigational",
+   "expected": 0.0
+  },
+  {
+   "volume": null,
+   "difficulty": 100,
+   "intent": "unknown-intent",
+   "expected": 0.0
+  },
+  {
+   "volume": 0,
+   "difficulty": null,
+   "intent": null,
+   "expected": 1.0
+  },
+  {
+   "volume": 0,
+   "difficulty": null,
+   "intent": "commercial",
+   "expected": 1.3
+  },
+  {
+   "volume": 0,
+   "difficulty": null,
+   "intent": "transactional",
+   "expected": 1.4
+  },
+  {
+   "volume": 0,
+   "difficulty": null,
+   "intent": "informational",
+   "expected": 1.0
+  },
+  {
+   "volume": 0,
+   "difficulty": null,
+   "intent": "navigational",
+   "expected": 0.6
+  },
+  {
+   "volume": 0,
+   "difficulty": null,
+   "intent": "unknown-intent",
+   "expected": 1.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 0,
+   "intent": null,
+   "expected": 2.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 0,
+   "intent": "commercial",
+   "expected": 2.6
+  },
+  {
+   "volume": 0,
+   "difficulty": 0,
+   "intent": "transactional",
+   "expected": 2.8
+  },
+  {
+   "volume": 0,
+   "difficulty": 0,
+   "intent": "informational",
+   "expected": 2.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 0,
+   "intent": "navigational",
+   "expected": 1.2
+  },
+  {
+   "volume": 0,
+   "difficulty": 0,
+   "intent": "unknown-intent",
+   "expected": 2.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 15,
+   "intent": null,
+   "expected": 1.7
+  },
+  {
+   "volume": 0,
+   "difficulty": 15,
+   "intent": "commercial",
+   "expected": 2.21
+  },
+  {
+   "volume": 0,
+   "difficulty": 15,
+   "intent": "transactional",
+   "expected": 2.38
+  },
+  {
+   "volume": 0,
+   "difficulty": 15,
+   "intent": "informational",
+   "expected": 1.7
+  },
+  {
+   "volume": 0,
+   "difficulty": 15,
+   "intent": "navigational",
+   "expected": 1.02
+  },
+  {
+   "volume": 0,
+   "difficulty": 15,
+   "intent": "unknown-intent",
+   "expected": 1.7
+  },
+  {
+   "volume": 0,
+   "difficulty": 30,
+   "intent": null,
+   "expected": 1.4
+  },
+  {
+   "volume": 0,
+   "difficulty": 30,
+   "intent": "commercial",
+   "expected": 1.82
+  },
+  {
+   "volume": 0,
+   "difficulty": 30,
+   "intent": "transactional",
+   "expected": 1.96
+  },
+  {
+   "volume": 0,
+   "difficulty": 30,
+   "intent": "informational",
+   "expected": 1.4
+  },
+  {
+   "volume": 0,
+   "difficulty": 30,
+   "intent": "navigational",
+   "expected": 0.84
+  },
+  {
+   "volume": 0,
+   "difficulty": 30,
+   "intent": "unknown-intent",
+   "expected": 1.4
+  },
+  {
+   "volume": 0,
+   "difficulty": 50,
+   "intent": null,
+   "expected": 1.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 50,
+   "intent": "commercial",
+   "expected": 1.3
+  },
+  {
+   "volume": 0,
+   "difficulty": 50,
+   "intent": "transactional",
+   "expected": 1.4
+  },
+  {
+   "volume": 0,
+   "difficulty": 50,
+   "intent": "informational",
+   "expected": 1.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 50,
+   "intent": "navigational",
+   "expected": 0.6
+  },
+  {
+   "volume": 0,
+   "difficulty": 50,
+   "intent": "unknown-intent",
+   "expected": 1.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 85,
+   "intent": null,
+   "expected": 0.3
+  },
+  {
+   "volume": 0,
+   "difficulty": 85,
+   "intent": "commercial",
+   "expected": 0.39
+  },
+  {
+   "volume": 0,
+   "difficulty": 85,
+   "intent": "transactional",
+   "expected": 0.42
+  },
+  {
+   "volume": 0,
+   "difficulty": 85,
+   "intent": "informational",
+   "expected": 0.3
+  },
+  {
+   "volume": 0,
+   "difficulty": 85,
+   "intent": "navigational",
+   "expected": 0.18
+  },
+  {
+   "volume": 0,
+   "difficulty": 85,
+   "intent": "unknown-intent",
+   "expected": 0.3
+  },
+  {
+   "volume": 0,
+   "difficulty": 100,
+   "intent": null,
+   "expected": 0.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 100,
+   "intent": "commercial",
+   "expected": 0.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 100,
+   "intent": "transactional",
+   "expected": 0.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 100,
+   "intent": "informational",
+   "expected": 0.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 100,
+   "intent": "navigational",
+   "expected": 0.0
+  },
+  {
+   "volume": 0,
+   "difficulty": 100,
+   "intent": "unknown-intent",
+   "expected": 0.0
+  },
+  {
+   "volume": 10,
+   "difficulty": null,
+   "intent": null,
+   "expected": 1.301
+  },
+  {
+   "volume": 10,
+   "difficulty": null,
+   "intent": "commercial",
+   "expected": 1.691
+  },
+  {
+   "volume": 10,
+   "difficulty": null,
+   "intent": "transactional",
+   "expected": 1.821
+  },
+  {
+   "volume": 10,
+   "difficulty": null,
+   "intent": "informational",
+   "expected": 1.301
+  },
+  {
+   "volume": 10,
+   "difficulty": null,
+   "intent": "navigational",
+   "expected": 0.781
+  },
+  {
+   "volume": 10,
+   "difficulty": null,
+   "intent": "unknown-intent",
+   "expected": 1.301
+  },
+  {
+   "volume": 10,
+   "difficulty": 0,
+   "intent": null,
+   "expected": 2.602
+  },
+  {
+   "volume": 10,
+   "difficulty": 0,
+   "intent": "commercial",
+   "expected": 3.383
+  },
+  {
+   "volume": 10,
+   "difficulty": 0,
+   "intent": "transactional",
+   "expected": 3.643
+  },
+  {
+   "volume": 10,
+   "difficulty": 0,
+   "intent": "informational",
+   "expected": 2.602
+  },
+  {
+   "volume": 10,
+   "difficulty": 0,
+   "intent": "navigational",
+   "expected": 1.561
+  },
+  {
+   "volume": 10,
+   "difficulty": 0,
+   "intent": "unknown-intent",
+   "expected": 2.602
+  },
+  {
+   "volume": 10,
+   "difficulty": 15,
+   "intent": null,
+   "expected": 2.212
+  },
+  {
+   "volume": 10,
+   "difficulty": 15,
+   "intent": "commercial",
+   "expected": 2.875
+  },
+  {
+   "volume": 10,
+   "difficulty": 15,
+   "intent": "transactional",
+   "expected": 3.096
+  },
+  {
+   "volume": 10,
+   "difficulty": 15,
+   "intent": "informational",
+   "expected": 2.212
+  },
+  {
+   "volume": 10,
+   "difficulty": 15,
+   "intent": "navigational",
+   "expected": 1.327
+  },
+  {
+   "volume": 10,
+   "difficulty": 15,
+   "intent": "unknown-intent",
+   "expected": 2.212
+  },
+  {
+   "volume": 10,
+   "difficulty": 30,
+   "intent": null,
+   "expected": 1.821
+  },
+  {
+   "volume": 10,
+   "difficulty": 30,
+   "intent": "commercial",
+   "expected": 2.368
+  },
+  {
+   "volume": 10,
+   "difficulty": 30,
+   "intent": "transactional",
+   "expected": 2.55
+  },
+  {
+   "volume": 10,
+   "difficulty": 30,
+   "intent": "informational",
+   "expected": 1.821
+  },
+  {
+   "volume": 10,
+   "difficulty": 30,
+   "intent": "navigational",
+   "expected": 1.093
+  },
+  {
+   "volume": 10,
+   "difficulty": 30,
+   "intent": "unknown-intent",
+   "expected": 1.821
+  },
+  {
+   "volume": 10,
+   "difficulty": 50,
+   "intent": null,
+   "expected": 1.301
+  },
+  {
+   "volume": 10,
+   "difficulty": 50,
+   "intent": "commercial",
+   "expected": 1.691
+  },
+  {
+   "volume": 10,
+   "difficulty": 50,
+   "intent": "transactional",
+   "expected": 1.821
+  },
+  {
+   "volume": 10,
+   "difficulty": 50,
+   "intent": "informational",
+   "expected": 1.301
+  },
+  {
+   "volume": 10,
+   "difficulty": 50,
+   "intent": "navigational",
+   "expected": 0.781
+  },
+  {
+   "volume": 10,
+   "difficulty": 50,
+   "intent": "unknown-intent",
+   "expected": 1.301
+  },
+  {
+   "volume": 10,
+   "difficulty": 85,
+   "intent": null,
+   "expected": 0.39
+  },
+  {
+   "volume": 10,
+   "difficulty": 85,
+   "intent": "commercial",
+   "expected": 0.507
+  },
+  {
+   "volume": 10,
+   "difficulty": 85,
+   "intent": "transactional",
+   "expected": 0.546
+  },
+  {
+   "volume": 10,
+   "difficulty": 85,
+   "intent": "informational",
+   "expected": 0.39
+  },
+  {
+   "volume": 10,
+   "difficulty": 85,
+   "intent": "navigational",
+   "expected": 0.234
+  },
+  {
+   "volume": 10,
+   "difficulty": 85,
+   "intent": "unknown-intent",
+   "expected": 0.39
+  },
+  {
+   "volume": 10,
+   "difficulty": 100,
+   "intent": null,
+   "expected": 0.0
+  },
+  {
+   "volume": 10,
+   "difficulty": 100,
+   "intent": "commercial",
+   "expected": 0.0
+  },
+  {
+   "volume": 10,
+   "difficulty": 100,
+   "intent": "transactional",
+   "expected": 0.0
+  },
+  {
+   "volume": 10,
+   "difficulty": 100,
+   "intent": "informational",
+   "expected": 0.0
+  },
+  {
+   "volume": 10,
+   "difficulty": 100,
+   "intent": "navigational",
+   "expected": 0.0
+  },
+  {
+   "volume": 10,
+   "difficulty": 100,
+   "intent": "unknown-intent",
+   "expected": 0.0
+  },
+  {
+   "volume": 880,
+   "difficulty": null,
+   "intent": null,
+   "expected": 2.949
+  },
+  {
+   "volume": 880,
+   "difficulty": null,
+   "intent": "commercial",
+   "expected": 3.834
+  },
+  {
+   "volume": 880,
+   "difficulty": null,
+   "intent": "transactional",
+   "expected": 4.129
+  },
+  {
+   "volume": 880,
+   "difficulty": null,
+   "intent": "informational",
+   "expected": 2.949
+  },
+  {
+   "volume": 880,
+   "difficulty": null,
+   "intent": "navigational",
+   "expected": 1.77
+  },
+  {
+   "volume": 880,
+   "difficulty": null,
+   "intent": "unknown-intent",
+   "expected": 2.949
+  },
+  {
+   "volume": 880,
+   "difficulty": 0,
+   "intent": null,
+   "expected": 5.899
+  },
+  {
+   "volume": 880,
+   "difficulty": 0,
+   "intent": "commercial",
+   "expected": 7.668
+  },
+  {
+   "volume": 880,
+   "difficulty": 0,
+   "intent": "transactional",
+   "expected": 8.258
+  },
+  {
+   "volume": 880,
+   "difficulty": 0,
+   "intent": "informational",
+   "expected": 5.899
+  },
+  {
+   "volume": 880,
+   "difficulty": 0,
+   "intent": "navigational",
+   "expected": 3.539
+  },
+  {
+   "volume": 880,
+   "difficulty": 0,
+   "intent": "unknown-intent",
+   "expected": 5.899
+  },
+  {
+   "volume": 880,
+   "difficulty": 15,
+   "intent": null,
+   "expected": 5.014
+  },
+  {
+   "volume": 880,
+   "difficulty": 15,
+   "intent": "commercial",
+   "expected": 6.518
+  },
+  {
+   "volume": 880,
+   "difficulty": 15,
+   "intent": "transactional",
+   "expected": 7.02
+  },
+  {
+   "volume": 880,
+   "difficulty": 15,
+   "intent": "informational",
+   "expected": 5.014
+  },
+  {
+   "volume": 880,
+   "difficulty": 15,
+   "intent": "navigational",
+   "expected": 3.008
+  },
+  {
+   "volume": 880,
+   "difficulty": 15,
+   "intent": "unknown-intent",
+   "expected": 5.014
+  },
+  {
+   "volume": 880,
+   "difficulty": 30,
+   "intent": null,
+   "expected": 4.129
+  },
+  {
+   "volume": 880,
+   "difficulty": 30,
+   "intent": "commercial",
+   "expected": 5.368
+  },
+  {
+   "volume": 880,
+   "difficulty": 30,
+   "intent": "transactional",
+   "expected": 5.781
+  },
+  {
+   "volume": 880,
+   "difficulty": 30,
+   "intent": "informational",
+   "expected": 4.129
+  },
+  {
+   "volume": 880,
+   "difficulty": 30,
+   "intent": "navigational",
+   "expected": 2.477
+  },
+  {
+   "volume": 880,
+   "difficulty": 30,
+   "intent": "unknown-intent",
+   "expected": 4.129
+  },
+  {
+   "volume": 880,
+   "difficulty": 50,
+   "intent": null,
+   "expected": 2.949
+  },
+  {
+   "volume": 880,
+   "difficulty": 50,
+   "intent": "commercial",
+   "expected": 3.834
+  },
+  {
+   "volume": 880,
+   "difficulty": 50,
+   "intent": "transactional",
+   "expected": 4.129
+  },
+  {
+   "volume": 880,
+   "difficulty": 50,
+   "intent": "informational",
+   "expected": 2.949
+  },
+  {
+   "volume": 880,
+   "difficulty": 50,
+   "intent": "navigational",
+   "expected": 1.77
+  },
+  {
+   "volume": 880,
+   "difficulty": 50,
+   "intent": "unknown-intent",
+   "expected": 2.949
+  },
+  {
+   "volume": 880,
+   "difficulty": 85,
+   "intent": null,
+   "expected": 0.885
+  },
+  {
+   "volume": 880,
+   "difficulty": 85,
+   "intent": "commercial",
+   "expected": 1.15
+  },
+  {
+   "volume": 880,
+   "difficulty": 85,
+   "intent": "transactional",
+   "expected": 1.239
+  },
+  {
+   "volume": 880,
+   "difficulty": 85,
+   "intent": "informational",
+   "expected": 0.885
+  },
+  {
+   "volume": 880,
+   "difficulty": 85,
+   "intent": "navigational",
+   "expected": 0.531
+  },
+  {
+   "volume": 880,
+   "difficulty": 85,
+   "intent": "unknown-intent",
+   "expected": 0.885
+  },
+  {
+   "volume": 880,
+   "difficulty": 100,
+   "intent": null,
+   "expected": 0.0
+  },
+  {
+   "volume": 880,
+   "difficulty": 100,
+   "intent": "commercial",
+   "expected": 0.0
+  },
+  {
+   "volume": 880,
+   "difficulty": 100,
+   "intent": "transactional",
+   "expected": 0.0
+  },
+  {
+   "volume": 880,
+   "difficulty": 100,
+   "intent": "informational",
+   "expected": 0.0
+  },
+  {
+   "volume": 880,
+   "difficulty": 100,
+   "intent": "navigational",
+   "expected": 0.0
+  },
+  {
+   "volume": 880,
+   "difficulty": 100,
+   "intent": "unknown-intent",
+   "expected": 0.0
+  },
+  {
+   "volume": 5400,
+   "difficulty": null,
+   "intent": null,
+   "expected": 3.733
+  },
+  {
+   "volume": 5400,
+   "difficulty": null,
+   "intent": "commercial",
+   "expected": 4.853
+  },
+  {
+   "volume": 5400,
+   "difficulty": null,
+   "intent": "transactional",
+   "expected": 5.226
+  },
+  {
+   "volume": 5400,
+   "difficulty": null,
+   "intent": "informational",
+   "expected": 3.733
+  },
+  {
+   "volume": 5400,
+   "difficulty": null,
+   "intent": "navigational",
+   "expected": 2.24
+  },
+  {
+   "volume": 5400,
+   "difficulty": null,
+   "intent": "unknown-intent",
+   "expected": 3.733
+  },
+  {
+   "volume": 5400,
+   "difficulty": 0,
+   "intent": null,
+   "expected": 7.466
+  },
+  {
+   "volume": 5400,
+   "difficulty": 0,
+   "intent": "commercial",
+   "expected": 9.706
+  },
+  {
+   "volume": 5400,
+   "difficulty": 0,
+   "intent": "transactional",
+   "expected": 10.453
+  },
+  {
+   "volume": 5400,
+   "difficulty": 0,
+   "intent": "informational",
+   "expected": 7.466
+  },
+  {
+   "volume": 5400,
+   "difficulty": 0,
+   "intent": "navigational",
+   "expected": 4.48
+  },
+  {
+   "volume": 5400,
+   "difficulty": 0,
+   "intent": "unknown-intent",
+   "expected": 7.466
+  },
+  {
+   "volume": 5400,
+   "difficulty": 15,
+   "intent": null,
+   "expected": 6.346
+  },
+  {
+   "volume": 5400,
+   "difficulty": 15,
+   "intent": "commercial",
+   "expected": 8.25
+  },
+  {
+   "volume": 5400,
+   "difficulty": 15,
+   "intent": "transactional",
+   "expected": 8.885
+  },
+  {
+   "volume": 5400,
+   "difficulty": 15,
+   "intent": "informational",
+   "expected": 6.346
+  },
+  {
+   "volume": 5400,
+   "difficulty": 15,
+   "intent": "navigational",
+   "expected": 3.808
+  },
+  {
+   "volume": 5400,
+   "difficulty": 15,
+   "intent": "unknown-intent",
+   "expected": 6.346
+  },
+  {
+   "volume": 5400,
+   "difficulty": 30,
+   "intent": null,
+   "expected": 5.226
+  },
+  {
+   "volume": 5400,
+   "difficulty": 30,
+   "intent": "commercial",
+   "expected": 6.794
+  },
+  {
+   "volume": 5400,
+   "difficulty": 30,
+   "intent": "transactional",
+   "expected": 7.317
+  },
+  {
+   "volume": 5400,
+   "difficulty": 30,
+   "intent": "informational",
+   "expected": 5.226
+  },
+  {
+   "volume": 5400,
+   "difficulty": 30,
+   "intent": "navigational",
+   "expected": 3.136
+  },
+  {
+   "volume": 5400,
+   "difficulty": 30,
+   "intent": "unknown-intent",
+   "expected": 5.226
+  },
+  {
+   "volume": 5400,
+   "difficulty": 50,
+   "intent": null,
+   "expected": 3.733
+  },
+  {
+   "volume": 5400,
+   "difficulty": 50,
+   "intent": "commercial",
+   "expected": 4.853
+  },
+  {
+   "volume": 5400,
+   "difficulty": 50,
+   "intent": "transactional",
+   "expected": 5.226
+  },
+  {
+   "volume": 5400,
+   "difficulty": 50,
+   "intent": "informational",
+   "expected": 3.733
+  },
+  {
+   "volume": 5400,
+   "difficulty": 50,
+   "intent": "navigational",
+   "expected": 2.24
+  },
+  {
+   "volume": 5400,
+   "difficulty": 50,
+   "intent": "unknown-intent",
+   "expected": 3.733
+  },
+  {
+   "volume": 5400,
+   "difficulty": 85,
+   "intent": null,
+   "expected": 1.12
+  },
+  {
+   "volume": 5400,
+   "difficulty": 85,
+   "intent": "commercial",
+   "expected": 1.456
+  },
+  {
+   "volume": 5400,
+   "difficulty": 85,
+   "intent": "transactional",
+   "expected": 1.568
+  },
+  {
+   "volume": 5400,
+   "difficulty": 85,
+   "intent": "informational",
+   "expected": 1.12
+  },
+  {
+   "volume": 5400,
+   "difficulty": 85,
+   "intent": "navigational",
+   "expected": 0.672
+  },
+  {
+   "volume": 5400,
+   "difficulty": 85,
+   "intent": "unknown-intent",
+   "expected": 1.12
+  },
+  {
+   "volume": 5400,
+   "difficulty": 100,
+   "intent": null,
+   "expected": 0.0
+  },
+  {
+   "volume": 5400,
+   "difficulty": 100,
+   "intent": "commercial",
+   "expected": 0.0
+  },
+  {
+   "volume": 5400,
+   "difficulty": 100,
+   "intent": "transactional",
+   "expected": 0.0
+  },
+  {
+   "volume": 5400,
+   "difficulty": 100,
+   "intent": "informational",
+   "expected": 0.0
+  },
+  {
+   "volume": 5400,
+   "difficulty": 100,
+   "intent": "navigational",
+   "expected": 0.0
+  },
+  {
+   "volume": 5400,
+   "difficulty": 100,
+   "intent": "unknown-intent",
+   "expected": 0.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": null,
+   "intent": null,
+   "expected": 5.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": null,
+   "intent": "commercial",
+   "expected": 6.5
+  },
+  {
+   "volume": 100000,
+   "difficulty": null,
+   "intent": "transactional",
+   "expected": 7.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": null,
+   "intent": "informational",
+   "expected": 5.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": null,
+   "intent": "navigational",
+   "expected": 3.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": null,
+   "intent": "unknown-intent",
+   "expected": 5.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 0,
+   "intent": null,
+   "expected": 10.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 0,
+   "intent": "commercial",
+   "expected": 13.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 0,
+   "intent": "transactional",
+   "expected": 14.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 0,
+   "intent": "informational",
+   "expected": 10.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 0,
+   "intent": "navigational",
+   "expected": 6.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 0,
+   "intent": "unknown-intent",
+   "expected": 10.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 15,
+   "intent": null,
+   "expected": 8.5
+  },
+  {
+   "volume": 100000,
+   "difficulty": 15,
+   "intent": "commercial",
+   "expected": 11.05
+  },
+  {
+   "volume": 100000,
+   "difficulty": 15,
+   "intent": "transactional",
+   "expected": 11.9
+  },
+  {
+   "volume": 100000,
+   "difficulty": 15,
+   "intent": "informational",
+   "expected": 8.5
+  },
+  {
+   "volume": 100000,
+   "difficulty": 15,
+   "intent": "navigational",
+   "expected": 5.1
+  },
+  {
+   "volume": 100000,
+   "difficulty": 15,
+   "intent": "unknown-intent",
+   "expected": 8.5
+  },
+  {
+   "volume": 100000,
+   "difficulty": 30,
+   "intent": null,
+   "expected": 7.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 30,
+   "intent": "commercial",
+   "expected": 9.1
+  },
+  {
+   "volume": 100000,
+   "difficulty": 30,
+   "intent": "transactional",
+   "expected": 9.8
+  },
+  {
+   "volume": 100000,
+   "difficulty": 30,
+   "intent": "informational",
+   "expected": 7.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 30,
+   "intent": "navigational",
+   "expected": 4.2
+  },
+  {
+   "volume": 100000,
+   "difficulty": 30,
+   "intent": "unknown-intent",
+   "expected": 7.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 50,
+   "intent": null,
+   "expected": 5.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 50,
+   "intent": "commercial",
+   "expected": 6.5
+  },
+  {
+   "volume": 100000,
+   "difficulty": 50,
+   "intent": "transactional",
+   "expected": 7.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 50,
+   "intent": "informational",
+   "expected": 5.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 50,
+   "intent": "navigational",
+   "expected": 3.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 50,
+   "intent": "unknown-intent",
+   "expected": 5.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 85,
+   "intent": null,
+   "expected": 1.5
+  },
+  {
+   "volume": 100000,
+   "difficulty": 85,
+   "intent": "commercial",
+   "expected": 1.95
+  },
+  {
+   "volume": 100000,
+   "difficulty": 85,
+   "intent": "transactional",
+   "expected": 2.1
+  },
+  {
+   "volume": 100000,
+   "difficulty": 85,
+   "intent": "informational",
+   "expected": 1.5
+  },
+  {
+   "volume": 100000,
+   "difficulty": 85,
+   "intent": "navigational",
+   "expected": 0.9
+  },
+  {
+   "volume": 100000,
+   "difficulty": 85,
+   "intent": "unknown-intent",
+   "expected": 1.5
+  },
+  {
+   "volume": 100000,
+   "difficulty": 100,
+   "intent": null,
+   "expected": 0.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 100,
+   "intent": "commercial",
+   "expected": 0.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 100,
+   "intent": "transactional",
+   "expected": 0.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 100,
+   "intent": "informational",
+   "expected": 0.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 100,
+   "intent": "navigational",
+   "expected": 0.0
+  },
+  {
+   "volume": 100000,
+   "difficulty": 100,
+   "intent": "unknown-intent",
+   "expected": 0.0
+  }
+ ],
+ "slugify": [
+  {
+   "input": "Best Espresso Grinder!!",
+   "expected": "best-espresso-grinder"
+  },
+  {
+   "input": "  How to -- Dial In  ",
+   "expected": "how-to-dial-in"
+  },
+  {
+   "input": "Café crème & milk",
+   "expected": "caf-cr-me-milk"
+  },
+  {
+   "input": "why is my espresso sour?",
+   "expected": "why-is-my-espresso-sour"
+  },
+  {
+   "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+   "expected": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+   "input": "-- already -- dashed --",
+   "expected": "already-dashed"
+  },
+  {
+   "input": "best espresso grinder",
+   "expected": "best-espresso-grinder"
+  }
+ ],
+ "configMd": {
+  "site": {
+   "url": "https://demo.example",
+   "name": "Demo",
+   "description": "A demo site about home espresso.",
+   "blogPath": "blog",
+   "mode": "markdown"
+  },
+  "taxonomy": {
+   "Guides": "guides",
+   "Compare": "compare"
+  },
+  "keywords": {
+   "positive": [
+    "\\b(espresso|coffee|grinder|portafilter)\\b"
+   ],
+   "negative": [
+    "\\b(casino|crypto)\\b"
+   ],
+   "classify": []
+  },
+  "laws": {
+   "wordMin": 40,
+   "wordMax": 4500,
+   "h2Min": 2,
+   "faqMin": 1,
+   "internalLinksMin": 0,
+   "titleMax": 70,
+   "descriptionMax": 165,
+   "keywordDensityMax": 0.025,
+   "banEmDash": true,
+   "requireFirstPerson": true,
+   "bannedPhrases": [
+    "delve into",
+    "leverage the",
+    "in today's fast-paced world",
+    "it's important to note that",
+    "in this guide",
+    "let's explore",
+    "at the heart of",
+    "the bottom line is",
+    "it's crucial to",
+    "as you can see",
+    "game-changer",
+    "unlock the power",
+    "seamlessly integrate",
+    "in the ever-evolving",
+    "navigating the landscape"
+   ]
+  }
+ },
+ "classify": {
+  "base": [
+   {
+    "kw": "best espresso grinder",
+    "category": "Guides",
+    "format": "listicle"
+   },
+   {
+    "kw": "breville vs gaggia",
+    "category": "Compare",
+    "format": "comparison"
+   },
+   {
+    "kw": "lelit alternative",
+    "category": "Compare",
+    "format": "comparison"
+   },
+   {
+    "kw": "espresso machine review",
+    "category": "Guides",
+    "format": "review"
+   },
+   {
+    "kw": "is a grinder worth it",
+    "category": "Guides",
+    "format": "review"
+   },
+   {
+    "kw": "portafilter size chart",
+    "category": "Guides",
+    "format": "data"
+   },
+   {
+    "kw": "espresso not working",
+    "category": "Guides",
+    "format": "troubleshooting"
+   },
+   {
+    "kw": "how to dial in espresso",
+    "category": "Guides",
+    "format": "how-to"
+   },
+   {
+    "kw": "what is crema",
+    "category": "Guides",
+    "format": "explainer"
+   },
+   {
+    "kw": "why is my espresso sour",
+    "category": "Guides",
+    "format": "explainer"
+   },
+   {
+    "kw": "grinder burr replacement",
+    "category": "Guides",
+    "format": "explainer"
+   },
+   {
+    "kw": "top espresso recipes",
+    "category": "Guides",
+    "format": "listicle"
+   },
+   {
+    "kw": "does tamping pressure matter",
+    "category": "Guides",
+    "format": "explainer"
+   },
+   {
+    "kw": "using a grinder instead of blade",
+    "category": "Compare",
+    "format": "comparison"
+   },
+   {
+    "kw": "coffee tastes sour fix",
+    "category": "Guides",
+    "format": "troubleshooting"
+   }
+  ],
+  "withRules": {
+   "rules": [
+    {
+     "pattern": "\\bvs\\b",
+     "category": "Compare",
+     "format": "comparison"
+    },
+    {
+     "pattern": "sour"
+    },
+    {
+     "pattern": "what is",
+     "category": "Guides",
+     "format": "explainer"
+    }
+   ],
+   "cases": [
+    {
+     "kw": "best espresso grinder",
+     "category": "Guides",
+     "format": "listicle"
+    },
+    {
+     "kw": "breville vs gaggia",
+     "category": "Compare",
+     "format": "comparison"
+    },
+    {
+     "kw": "lelit alternative",
+     "category": "Compare",
+     "format": "comparison"
+    },
+    {
+     "kw": "espresso machine review",
+     "category": "Guides",
+     "format": "review"
+    },
+    {
+     "kw": "is a grinder worth it",
+     "category": "Guides",
+     "format": "review"
+    },
+    {
+     "kw": "portafilter size chart",
+     "category": "Guides",
+     "format": "data"
+    },
+    {
+     "kw": "espresso not working",
+     "category": "Guides",
+     "format": "troubleshooting"
+    },
+    {
+     "kw": "how to dial in espresso",
+     "category": "Guides",
+     "format": "how-to"
+    },
+    {
+     "kw": "what is crema",
+     "category": "Guides",
+     "format": "explainer"
+    },
+    {
+     "kw": "why is my espresso sour",
+     "category": "Guides",
+     "format": "explainer"
+    },
+    {
+     "kw": "grinder burr replacement",
+     "category": "Guides",
+     "format": "explainer"
+    },
+    {
+     "kw": "top espresso recipes",
+     "category": "Guides",
+     "format": "listicle"
+    },
+    {
+     "kw": "does tamping pressure matter",
+     "category": "Guides",
+     "format": "explainer"
+    },
+    {
+     "kw": "using a grinder instead of blade",
+     "category": "Compare",
+     "format": "comparison"
+    },
+    {
+     "kw": "coffee tastes sour fix",
+     "category": "Guides",
+     "format": "explainer"
+    }
+   ]
+  }
+ },
+ "relevant": [
+  {
+   "kw": "best espresso grinder",
+   "ok": true
+  },
+  {
+   "kw": "espresso casino night",
+   "ok": false
+  },
+  {
+   "kw": "crypto coffee token",
+   "ok": false
+  },
+  {
+   "kw": "how to clean a coffee grinder",
+   "ok": true
+  },
+  {
+   "kw": "best knife sharpener",
+   "ok": false
+  },
+  {
+   "kw": "portafilter size guide",
+   "ok": true
+  },
+  {
+   "kw": "grinder for spices",
+   "ok": true
+  }
+ ],
+ "laws": {
+  "good": [],
+  "fail": [
+   [
+    "bad-post",
+    "title <= 70 chars"
+   ],
+   [
+    "bad-post",
+    "word count >= 40"
+   ],
+   [
+    "bad-post",
+    "h2 sections >= 2"
+   ],
+   [
+    "bad-post",
+    "faq entries >= 1"
+   ],
+   [
+    "bad-post",
+    "no filler AI phrases"
+   ],
+   [
+    "bad-post",
+    "first-person experience"
+   ]
+  ],
+  "html": []
+ },
+ "wire": {
+  "sitemap": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n  <url>\n    <loc>https://demo.example/</loc>\n    <lastmod>2026-07-22</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>1.0</priority>\n  </url>\n  <url>\n    <loc>https://demo.example/blog/</loc>\n    <lastmod>2026-07-22</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.8</priority>\n  </url>\n  <url>\n    <loc>https://demo.example/blog/guides/</loc>\n    <lastmod>2026-07-20</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.6</priority>\n  </url>\n  <url>\n    <loc>https://demo.example/blog/compare/</loc>\n    <lastmod>2026-07-22</lastmod>\n    <changefreq>weekly</changefreq>\n    <priority>0.6</priority>\n  </url>\n  <url>\n    <loc>https://demo.example/blog/flat-vs-conical-burrs/</loc>\n    <lastmod>2026-07-22</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>\n  <url>\n    <loc>https://demo.example/blog/dialing-in-espresso/</loc>\n    <lastmod>2026-07-20</lastmod>\n    <changefreq>monthly</changefreq>\n    <priority>0.7</priority>\n  </url>\n</urlset>\n",
+  "rss": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<rss version=\"2.0\">\n<channel>\n  <title>Demo</title>\n  <link>https://demo.example/</link>\n  <description>A demo site about home espresso.</description>\n  <lastBuildDate>Wed, 22 Jul 2026 09:00:00 GMT</lastBuildDate>\n  <item>\n    <title>Flat vs Conical Burrs for Espresso</title>\n    <link>https://demo.example/blog/flat-vs-conical-burrs/</link>\n    <guid>https://demo.example/blog/flat-vs-conical-burrs/</guid>\n    <pubDate>Wed, 22 Jul 2026 09:00:00 GMT</pubDate>\n    <description>What actually changes in the cup between flat and conical burr grinders.</description>\n  </item>\n  <item>\n    <title>How I Dial In Espresso in Five Shots</title>\n    <link>https://demo.example/blog/dialing-in-espresso/</link>\n    <guid>https://demo.example/blog/dialing-in-espresso/</guid>\n    <pubDate>Mon, 20 Jul 2026 09:00:00 GMT</pubDate>\n    <description>The exact routine I use to dial in a new bag of espresso beans.</description>\n  </item>\n</channel>\n</rss>\n",
+  "llmsTxt": "# Demo\n\n> A demo site about home espresso.\n\n## Guides\n\n- [How I Dial In Espresso in Five Shots](https://demo.example/blog/dialing-in-espresso/): The exact routine I use to dial in a new bag of espresso beans.\n\n## Compare\n\n- [Flat vs Conical Burrs for Espresso](https://demo.example/blog/flat-vs-conical-burrs/): What actually changes in the cup between flat and conical burr grinders.\n",
+  "llmsFull": "# Demo: all posts (llms-full)\n\n> Full text of every demo.example post, one file, for AI agents.\n> Canonical URLs included per post. Site map: https://demo.example/llms.txt\n\n\n\n---\n\n# Flat vs Conical Burrs for Espresso\n\nURL: https://demo.example/blog/flat-vs-conical-burrs/\n\nWhat actually changes in the cup between flat and conical burr grinders.\nI have pulled shots on both flat and conical burr grinders for years, and\nthe flat vs conical burrs debate matters less than alignment and grind\nretention in my testing.\n\n## What flat burrs change\n\nFlat burrs give me a tighter particle distribution and a cleaner,\nhigher-clarity cup. They also heat up faster on long dialing sessions.\n\n## What conical burrs change\n\nConical burrs run quieter, retain less, and forgive a sloppy distribution\ntechnique more than any flat set I have owned.\n\n## Is one of them simply better?\n\nNo. For milk drinks I reach for the conical; for straight shots of a washed\nsingle origin, the flat set wins the taste test at my bar more often than\nnot. See [my dial-in routine](/blog/dialing-in-espresso/) for the workflow\neither way.\n\n\n---\n\n# How I Dial In Espresso in Five Shots\n\nURL: https://demo.example/blog/dialing-in-espresso/\n\nThe exact routine I use to dial in a new bag of espresso beans.\nI dial in a new bag the same way every time, and it rarely takes more than\nfive shots from the first coarse pull to a balanced cup I am happy with.\n\n## Start coarse and fast\n\nMy first shot is always deliberately coarse. I taste it, note the sourness,\nand tighten the grind one step at a time until the shot slows down.\n\n## What changes shot to shot\n\nEach shot moves exactly one variable. I never change the dose and the grind\ntogether, because then I cannot tell which change fixed the cup.\n\n## Is five shots really enough?\n\nYes, for most beans. I keep the last bag's setting written on the bag clip,\nso the next bag starts close and the routine converges quickly.\n",
+  "htmlLlmsFull": "# Demo: all posts (llms-full)\n\n> Full text of every demo.example post, one file, for AI agents.\n> Canonical URLs included per post. Site map: https://demo.example/llms.txt\n\n\n\n---\n\n# My Espresso Grinder Cleaning Routine\n\nURL: https://demo.example/blog/grinder-cleaning/\n\nHow I clean my espresso grinder, and how often it actually needs it.\nI clean my espresso grinder on the first Sunday of every month, and my grinder cleaning routine takes about ten minutes from start to finish once the beans are out.\n\n## What I remove & what I leave\n\nI take out the hopper and the upper burr, brush the chamber, and vacuum the chute. I leave the lower burr seated because pulling it shifts the alignment I calibrated.\n\n## How often is too often?\n\nFor a home machine, monthly is plenty in my testing. Oily beans move that to every two weeks; a shop should do it weekly.\n\n### Do cleaning tablets work?\n\nThey work for the chute and the burr faces, but I still brush the corners the tablets never reach.\nThe one internal page I point people at first is my dial-in routine, because a clean grinder drifts your setting.\n"
+ },
+ "brief": {
+  "today": "2026-07-30",
+  "category": "Compare",
+  "row": {
+   "keyword": "best espresso grinder",
+   "category": "Compare",
+   "format": "comparison",
+   "searchVolume": 5400,
+   "keywordDifficulty": 30,
+   "intent": "commercial",
+   "score": 5.2,
+   "source": "dataforseo",
+   "notes": null
+  },
+  "serp": {
+   "organic": [
+    {
+     "url": "https://a.example/1",
+     "title": "The 9 Best Espresso Grinders of 2026",
+     "description": "x"
+    },
+    {
+     "url": "https://b.example/2",
+     "title": "Best Espresso Grinders, Tested by Baristas",
+     "description": "y"
+    },
+    {
+     "url": "https://c.example/3",
+     "title": "Espresso Grinder Buying Guide",
+     "description": "z"
+    }
+   ],
+   "paa": [
+    "how much should i spend on an espresso grinder",
+    {
+     "question": "do i need a single dose grinder"
+    },
+    "are flat burrs better than conical"
+   ]
+  },
+  "markdown": "# Writer brief: \"best espresso grinder\"\n\nToday's date is 2026-07-30. Primary keyword: \"best espresso grinder\". Category: Compare.\nSuggested slug: best-espresso-grinder (page URL: /blog/best-espresso-grinder/).\n\n## The keyword row\n\n- score: 5.20  volume: 5400  difficulty: 30  intent: commercial\n- format: comparison  source: dataforseo\n\n## Search context\n\nWhat currently ranks (titles only, for angle and gap analysis):\n  - The 9 Best Espresso Grinders of 2026\n  - Best Espresso Grinders, Tested by Baristas\n  - Espresso Grinder Buying Guide\n\nAngle: write what these results underserve. The question they all skip, the number none of them measured, the honest \"it depends\" they all avoid. Do not re-cover their common ground.\n\nPeople Also Ask (real questions; use these to shape the FAQ):\n  - how much should i spend on an espresso grinder\n  - do i need a single dose grinder\n  - are flat burrs better than conical\n\n## Hard requirements (the laws; `rankloop check` rejects the post otherwise)\n\n- 40 to 4500 words in the article body\n- At least 2 H2 sections\n- At least 1 FAQ entries: real questions with direct answers\n- At least 0 internal links, using ONLY these real pages:\n  - /blog/flat-vs-conical-burrs/  (Flat vs Conical Burrs for Espresso)\n  - /blog/dialing-in-espresso/  (How I Dial In Espresso in Five Shots)\n- Title at most 70 characters; meta description at most 165\n- Use the exact phrase \"best espresso grinder\" in the body at least once, but keep its density under 2.5%\n- NO em dashes anywhere. Use commas, colons or a full stop.\n- Written in first person where natural (\"I built\", \"I measured\", \"in my testing\")\n- Category must be exactly: Compare\n- Publish date: 2026-07-30\n\n## Banned phrases (automatic rejection)\n\ndelve into, leverage the, in today's fast-paced world, it's important to note that, in this guide, let's explore, at the heart of, the bottom line is, it's crucial to, as you can see, game-changer, unlock the power, seamlessly integrate, in the ever-evolving, navigating the landscape\n\n## Voice\n\nWrite like a working practitioner explaining something to a peer.\nConcrete over abstract. Short sentences carry the weight. No hype, no\nmarketing cadence, no sentence that could open any article on any\ntopic. Earn the reader's next paragraph. If the honest answer to the\ntitle's question is \"no\" or \"it depends\", say so plainly rather than\npadding toward a pitch.\n\nEvery product claim (yours or a competitor's) must be something you can\nactually verify; when you cannot, hedge honestly or cut the claim. The\npost should be genuinely useful to someone who never buys anything from\nyou. Sell nothing until the end.\n\n## Site taxonomy\n\n- Guides -> /blog/guides/\n- Compare -> /blog/compare/  <- this post\n",
+  "markdownNoSerp": "# Writer brief: \"best espresso grinder\"\n\nToday's date is 2026-07-30. Primary keyword: \"best espresso grinder\". Category: Compare.\nSuggested slug: best-espresso-grinder (page URL: /blog/best-espresso-grinder/).\n\n## The keyword row\n\n- score: 5.20  volume: 5400  difficulty: 30  intent: commercial\n- format: comparison  source: dataforseo\n\n## Search context\n\nNo cached SERP for this keyword. Write from the topic itself.\n\n## Hard requirements (the laws; `rankloop check` rejects the post otherwise)\n\n- 40 to 4500 words in the article body\n- At least 2 H2 sections\n- At least 1 FAQ entries: real questions with direct answers\n- At least 0 internal links, using ONLY these real pages:\n  - /blog/flat-vs-conical-burrs/  (Flat vs Conical Burrs for Espresso)\n  - /blog/dialing-in-espresso/  (How I Dial In Espresso in Five Shots)\n- Title at most 70 characters; meta description at most 165\n- Use the exact phrase \"best espresso grinder\" in the body at least once, but keep its density under 2.5%\n- NO em dashes anywhere. Use commas, colons or a full stop.\n- Written in first person where natural (\"I built\", \"I measured\", \"in my testing\")\n- Category must be exactly: Compare\n- Publish date: 2026-07-30\n\n## Banned phrases (automatic rejection)\n\ndelve into, leverage the, in today's fast-paced world, it's important to note that, in this guide, let's explore, at the heart of, the bottom line is, it's crucial to, as you can see, game-changer, unlock the power, seamlessly integrate, in the ever-evolving, navigating the landscape\n\n## Voice\n\nWrite like a working practitioner explaining something to a peer.\nConcrete over abstract. Short sentences carry the weight. No hype, no\nmarketing cadence, no sentence that could open any article on any\ntopic. Earn the reader's next paragraph. If the honest answer to the\ntitle's question is \"no\" or \"it depends\", say so plainly rather than\npadding toward a pitch.\n\nEvery product claim (yours or a competitor's) must be something you can\nactually verify; when you cannot, hedge honestly or cut the claim. The\npost should be genuinely useful to someone who never buys anything from\nyou. Sell nothing until the end.\n\n## Site taxonomy\n\n- Guides -> /blog/guides/\n- Compare -> /blog/compare/  <- this post\n"
+ },
+ "htmlPost": {
+  "slug": "grinder-cleaning",
+  "title": "My Espresso Grinder Cleaning Routine",
+  "description": "How I clean my espresso grinder, and how often it actually needs it.",
+  "date": "2026-07-22",
+  "category": "Guides",
+  "wordCount": 140,
+  "keyword": "grinder cleaning",
+  "minutes": 4
+ },
+ "configHtml": {
+  "site": {
+   "url": "https://demo.example",
+   "name": "Demo",
+   "description": "A demo site about home espresso.",
+   "blogPath": "blog",
+   "mode": "html"
+  },
+  "taxonomy": {
+   "Guides": "guides",
+   "Compare": "compare"
+  },
+  "keywords": {
+   "positive": [
+    "\\b(espresso|coffee|grinder|portafilter)\\b"
+   ],
+   "negative": [
+    "\\b(casino|crypto)\\b"
+   ],
+   "classify": []
+  },
+  "laws": {
+   "wordMin": 40,
+   "wordMax": 4500,
+   "h2Min": 2,
+   "faqMin": 1,
+   "internalLinksMin": 0,
+   "titleMax": 70,
+   "descriptionMax": 165,
+   "keywordDensityMax": 0.025,
+   "banEmDash": true,
+   "requireFirstPerson": true,
+   "bannedPhrases": [
+    "delve into",
+    "leverage the",
+    "in today's fast-paced world",
+    "it's important to note that",
+    "in this guide",
+    "let's explore",
+    "at the heart of",
+    "the bottom line is",
+    "it's crucial to",
+    "as you can see",
+    "game-changer",
+    "unlock the power",
+    "seamlessly integrate",
+    "in the ever-evolving",
+    "navigating the landscape"
+   ]
+  }
+ },
+ "quota": [
+  {
+   "startDate": "",
+   "postsPerDay": 2,
+   "catchupCap": 6,
+   "publishedDates": [
+    "2026-07-20"
+   ],
+   "today": "2026-07-30",
+   "expected": null
+  },
+  {
+   "startDate": "not-a-date",
+   "postsPerDay": 2,
+   "catchupCap": 6,
+   "publishedDates": [
+    "2026-07-20"
+   ],
+   "today": "2026-07-30",
+   "expected": null
+  },
+  {
+   "startDate": "2026-07-21",
+   "postsPerDay": 2,
+   "catchupCap": 6,
+   "publishedDates": [
+    "2026-07-20"
+   ],
+   "today": "2026-07-30",
+   "expected": 6
+  },
+  {
+   "startDate": "2026-07-20",
+   "postsPerDay": 2,
+   "catchupCap": 6,
+   "publishedDates": [
+    "2026-07-20"
+   ],
+   "today": "2026-07-30",
+   "expected": 6
+  },
+  {
+   "startDate": "2026-07-29",
+   "postsPerDay": 1,
+   "catchupCap": 6,
+   "publishedDates": [
+    "2026-07-20"
+   ],
+   "today": "2026-07-30",
+   "expected": 2
+  },
+  {
+   "startDate": "2026-08-05",
+   "postsPerDay": 2,
+   "catchupCap": 6,
+   "publishedDates": [
+    "2026-07-20"
+   ],
+   "today": "2026-07-30",
+   "expected": 0
+  },
+  {
+   "startDate": "2026-07-30",
+   "postsPerDay": 2,
+   "catchupCap": 6,
+   "publishedDates": [
+    "2026-07-30"
+   ],
+   "today": "2026-07-30",
+   "expected": 1
+  }
+ ],
+ "corpora": {
+  "good": {
+   "mode": "markdown",
+   "files": {
+    "dialing-in-espresso.md": "---\ntitle: How I Dial In Espresso in Five Shots\ndescription: The exact routine I use to dial in a new bag of espresso beans.\ndate: 2026-07-20\ncategory: Guides\nkeyword: dial in\n---\nI dial in a new bag the same way every time, and it rarely takes more than\nfive shots from the first coarse pull to a balanced cup I am happy with.\n\n## Start coarse and fast\n\nMy first shot is always deliberately coarse. I taste it, note the sourness,\nand tighten the grind one step at a time until the shot slows down.\n\n## What changes shot to shot\n\nEach shot moves exactly one variable. I never change the dose and the grind\ntogether, because then I cannot tell which change fixed the cup.\n\n## Is five shots really enough?\n\nYes, for most beans. I keep the last bag's setting written on the bag clip,\nso the next bag starts close and the routine converges quickly.\n"
+   }
+  },
+  "fail": {
+   "mode": "markdown",
+   "files": {
+    "dialing-in-espresso.md": "---\ntitle: How I Dial In Espresso in Five Shots\ndescription: The exact routine I use to dial in a new bag of espresso beans.\ndate: 2026-07-20\ncategory: Guides\nkeyword: dial in\n---\nI dial in a new bag the same way every time, and it rarely takes more than\nfive shots from the first coarse pull to a balanced cup I am happy with.\n\n## Start coarse and fast\n\nMy first shot is always deliberately coarse. I taste it, note the sourness,\nand tighten the grind one step at a time until the shot slows down.\n\n## What changes shot to shot\n\nEach shot moves exactly one variable. I never change the dose and the grind\ntogether, because then I cannot tell which change fixed the cup.\n\n## Is five shots really enough?\n\nYes, for most beans. I keep the last bag's setting written on the bag clip,\nso the next bag starts close and the routine converges quickly.\n",
+    "bad-post.md": "---\ntitle: A Post That Breaks the Laws On Purpose Because It Is Far Far Too Long a Title\ndescription: short.\ndate: 2026-07-21\ncategory: Guides\n---\nToo short. In today's fast-paced world, one paragraph and a banned phrase.\n"
+   }
+  },
+  "wire": {
+   "mode": "markdown",
+   "files": {
+    "dialing-in-espresso.md": "---\ntitle: How I Dial In Espresso in Five Shots\ndescription: The exact routine I use to dial in a new bag of espresso beans.\ndate: 2026-07-20\ncategory: Guides\nkeyword: dial in\n---\nI dial in a new bag the same way every time, and it rarely takes more than\nfive shots from the first coarse pull to a balanced cup I am happy with.\n\n## Start coarse and fast\n\nMy first shot is always deliberately coarse. I taste it, note the sourness,\nand tighten the grind one step at a time until the shot slows down.\n\n## What changes shot to shot\n\nEach shot moves exactly one variable. I never change the dose and the grind\ntogether, because then I cannot tell which change fixed the cup.\n\n## Is five shots really enough?\n\nYes, for most beans. I keep the last bag's setting written on the bag clip,\nso the next bag starts close and the routine converges quickly.\n",
+    "flat-vs-conical-burrs.md": "---\ntitle: Flat vs Conical Burrs for Espresso\ndescription: What actually changes in the cup between flat and conical burr grinders.\ndate: 2026-07-22\ncategory: Compare\nkeyword: flat vs conical burrs\n---\nI have pulled shots on both flat and conical burr grinders for years, and\nthe flat vs conical burrs debate matters less than alignment and grind\nretention in my testing.\n\n## What flat burrs change\n\nFlat burrs give me a tighter particle distribution and a cleaner,\nhigher-clarity cup. They also heat up faster on long dialing sessions.\n\n## What conical burrs change\n\nConical burrs run quieter, retain less, and forgive a sloppy distribution\ntechnique more than any flat set I have owned.\n\n## Is one of them simply better?\n\nNo. For milk drinks I reach for the conical; for straight shots of a washed\nsingle origin, the flat set wins the taste test at my bar more often than\nnot. See [my dial-in routine](/blog/dialing-in-espresso/) for the workflow\neither way.\n"
+   }
+  },
+  "html": {
+   "mode": "html",
+   "files": {
+    "grinder-cleaning/index.html": "<!doctype html>\n<html lang=\"en\">\n<head>\n<meta charset=\"utf-8\">\n<title>My Espresso Grinder Cleaning Routine</title>\n<link rel=\"canonical\" href=\"https://demo.example/blog/grinder-cleaning/\">\n<meta name=\"keywords\" content=\"grinder cleaning, espresso maintenance\">\n<meta name=\"description\" content=\"How I clean my espresso grinder.\">\n<script type=\"application/ld+json\">{\"@context\": \"https://schema.org\", \"@graph\": [{\"@type\": \"BlogPosting\", \"headline\": \"My Espresso Grinder Cleaning Routine\", \"description\": \"How I clean my espresso grinder, and how often it actually needs it.\", \"datePublished\": \"2026-07-22\", \"articleSection\": \"Guides\", \"timeRequired\": \"PT4M\", \"author\": {\"@type\": \"Person\", \"name\": \"Demo\"}}]}</script>\n</head>\n<body>\n<main>\n<article>\n<p>I clean my espresso grinder on the first Sunday of every month, and my grinder cleaning routine takes about ten minutes from start to finish once the beans are out.</p>\n<h2>What I remove &amp; what I leave</h2>\n<p>I take out the hopper and the upper burr, brush the chamber, and vacuum the chute. I leave the lower burr seated because pulling it shifts the alignment I calibrated.</p>\n<h2>How often is too often?</h2>\n<p>For a home machine, monthly is plenty in my testing. Oily beans move that to every two weeks; a shop should do it weekly.</p>\n<div class=\"faq-item\"><h3>Do cleaning tablets work?</h3><p>They work for the chute and the burr faces, but I still brush the corners the tablets never reach.</p></div>\n<p>The one internal page I point people at first is <a href=\"/blog/dialing-in-espresso/\">my dial-in routine</a>, because a clean grinder drifts your setting.</p>\n</article>\n</main>\n</body>\n</html>\n"
+   }
+  }
+ }
+}

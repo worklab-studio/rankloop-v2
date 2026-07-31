@@ -1,0 +1,12 @@
+{
+  "name": "rankloop-v2",
+  "private": true,
+  "version": "2.0.0-dev",
+  "description": "rankloop 2.0 — open-source automated pSEO engine: grounded topics, laws-gated writing, publish adapters, Search Console flywheel.",
+  "license": "MIT",
+  "packageManager": "pnpm@10.22.0",
+  "scripts": {
+    "test": "pnpm -r test",
+    "typecheck": "pnpm -r typecheck"
+  }
+}

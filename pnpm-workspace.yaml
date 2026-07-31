@@ -1,0 +1,5 @@
+packages:
+  - "packages/*"
+  - "apps/*"
+  # the vendored OpenSEO fork manages its own workspace + lockfile
+  - "!apps/dashboard"

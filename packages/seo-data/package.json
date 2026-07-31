@@ -1,0 +1,19 @@
+{
+  "name": "@rankloop/seo-data",
+  "version": "2.0.0-dev",
+  "description": "Budget-capped DataForSEO client: keywords, SERP, competitors, keyword gap, backlinks. Every call logged to a spend ledger; a hard ceiling stops runaway spend.",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.6.0",
+    "vitest": "^3.0.0"
+  }
+}

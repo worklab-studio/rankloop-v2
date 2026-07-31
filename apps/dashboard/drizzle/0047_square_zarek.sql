@@ -1,0 +1,1 @@
+ALTER TABLE `page_plan_runs` ADD `keywords_clustered` integer;

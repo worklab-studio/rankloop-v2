@@ -1,0 +1,12 @@
+# deps / build
+node_modules/
+dist/
+.turbo/
+
+# env & credentials (BYO keys live in env, never in the repo)
+.env
+.env.*
+!.env.example
+
+# os
+.DS_Store

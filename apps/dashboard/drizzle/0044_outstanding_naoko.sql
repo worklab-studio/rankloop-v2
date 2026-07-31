@@ -1,0 +1,1 @@
+ALTER TABLE `gsc_performance` ADD `sync_mark` text;

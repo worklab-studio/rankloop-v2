@@ -1,0 +1,1 @@
+ALTER TABLE `receipts` ADD `next_check_at` text;
