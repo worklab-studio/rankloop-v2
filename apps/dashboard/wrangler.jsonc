@@ -60,6 +60,11 @@
       "binding": "ARTICLE_WRITE_WORKFLOW",
       "class_name": "ArticleWriteWorkflow",
     },
+    {
+      "name": "publish-workflow",
+      "binding": "PUBLISH_WORKFLOW",
+      "class_name": "PublishWorkflow",
+    },
   ],
   // Durable Object backing the onboarding strategy chat (Agents SDK
   // AIChatAgent). One instance per project; messages persist in the DO's

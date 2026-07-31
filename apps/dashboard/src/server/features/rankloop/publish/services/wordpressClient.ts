@@ -1,9 +1,14 @@
 import { z } from "zod";
 import { AppError } from "@/server/lib/errors";
 
-// The WordPress adapter (spec 0013): the least-dangerous write path. It only
-// ever updates fields of an existing post — never creates, never deletes —
-// and authenticates with an application password the user can revoke in
+// The WordPress client. It started (spec 0013) as the least-dangerous write
+// path: only ever updating fields of an existing post, never creating, never
+// deleting. Spec 0021 adds creation, because publishing an article is the one
+// thing that has to make a page that was not there before — and nothing else
+// widened. There is still no delete, no taxonomy creation, and no write to a
+// user's prose outside the delimited block rankloop maintains.
+//
+// Authentication stays an application password the user can revoke in
 // WordPress at any time. Plain fetch against wp-json; no SDK, no logging.
 
 // ---------------------------------------------------------------------------
@@ -229,8 +234,226 @@ async function updatePost(
   return { metaDescriptionApplied };
 }
 
+// ---------------------------------------------------------------------------
+// Creation (spec 0021)
+// ---------------------------------------------------------------------------
+
+/** WordPress post status. 'draft' is what a connection defaults to. */
+type WordPressPostStatus = "draft" | "publish";
+
+// A created object answers with more than the update path needed: `link` is
+// the canonical URL WordPress itself resolved, which beats any URL we could
+// compute from a permalink structure we cannot see.
+const createdSchema = z.object({
+  id: z.number().int(),
+  link: z.string(),
+  meta: z.unknown().optional(),
+});
+
+const termSchema = z.object({
+  id: z.number().int(),
+  name: z.string(),
+  slug: z.string(),
+});
+
+const termListSchema = z.array(termSchema);
+
+const contentPostSchema = z.object({
+  id: z.number().int(),
+  link: z.string(),
+  content: z.object({
+    raw: z.string().optional(),
+    rendered: z.string().optional(),
+  }),
+});
+
+const contentPostListSchema = z.array(contentPostSchema);
+
+type CreatedWordPressPost = {
+  id: number;
+  link: string;
+  /** Detected from the create response, so the description needs no probe. */
+  metaDescriptionField: MetaDescriptionField | null;
+};
+
+async function createPost(
+  config: WordPressConfig,
+  input: {
+    title: string;
+    slug: string;
+    content: string;
+    excerpt: string;
+    status: WordPressPostStatus;
+    /** Existing category ids only — resolveCategoryIds decides which. */
+    categoryIds: number[];
+  },
+): Promise<CreatedWordPressPost> {
+  const body: Record<string, unknown> = {
+    title: input.title,
+    slug: input.slug,
+    content: input.content,
+    excerpt: input.excerpt,
+    status: input.status,
+  };
+  // Sending `categories: []` would strip whatever WordPress assigns by
+  // default; omitting the key leaves the site's own default alone.
+  if (input.categoryIds.length > 0) body.categories = input.categoryIds;
+  const payload = await wpFetch(config, "/wp-json/wp/v2/posts", {
+    method: "POST",
+    body,
+  });
+  const parsed = createdSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new AppError(
+      "PUBLISH_UNREACHABLE",
+      "Unexpected response shape from POST /wp-json/wp/v2/posts.",
+    );
+  }
+  return {
+    id: parsed.data.id,
+    link: parsed.data.link,
+    metaDescriptionField: detectMetaDescriptionField(parsed.data.meta),
+  };
+}
+
+/** Hubs are pages, not posts: a hub is site architecture, and putting one in
+ *  the post feed would push it through the RSS and the blog index. */
+async function findPageBySlug(
+  config: WordPressConfig,
+  slug: string,
+): Promise<{ id: number; link: string } | null> {
+  const payload = await wpFetch(
+    config,
+    `/wp-json/wp/v2/pages?slug=${encodeURIComponent(slug)}&context=edit`,
+  );
+  const parsed = z
+    .array(z.object({ id: z.number().int(), link: z.string() }))
+    .safeParse(payload);
+  if (!parsed.success) {
+    throw new AppError(
+      "PUBLISH_UNREACHABLE",
+      "Unexpected response shape from /wp-json/wp/v2/pages.",
+    );
+  }
+  return parsed.data[0] ?? null;
+}
+
+async function createPage(
+  config: WordPressConfig,
+  input: {
+    title: string;
+    slug: string;
+    content: string;
+    status: WordPressPostStatus;
+  },
+): Promise<{ id: number; link: string }> {
+  const payload = await wpFetch(config, "/wp-json/wp/v2/pages", {
+    method: "POST",
+    body: input,
+  });
+  const parsed = createdSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new AppError(
+      "PUBLISH_UNREACHABLE",
+      "Unexpected response shape from POST /wp-json/wp/v2/pages.",
+    );
+  }
+  return { id: parsed.data.id, link: parsed.data.link };
+}
+
+/**
+ * Map category names to ids, matching only what already exists.
+ *
+ * rankloop never creates taxonomy the user did not ask for: a category is a
+ * navigational commitment on someone else's site, and a page type named
+ * "Comparisons" is not permission to add a "Comparisons" category to their
+ * menu. Names with no match come back as `missing` so the caller can say what
+ * it skipped instead of silently dropping it.
+ */
+async function resolveCategoryIds(
+  config: WordPressConfig,
+  names: string[],
+): Promise<{ ids: number[]; missing: string[] }> {
+  const ids: number[] = [];
+  const missing: string[] = [];
+  for (const name of names) {
+    const payload = await wpFetch(
+      config,
+      `/wp-json/wp/v2/categories?search=${encodeURIComponent(name)}`,
+    );
+    const parsed = termListSchema.safeParse(payload);
+    // `search` is a fuzzy match: "Comparison" would return "Comparisons".
+    // Only an exact name or slug hit counts, or we would file the post under
+    // a category the user never meant.
+    const wanted = name.trim().toLowerCase();
+    const hit = parsed.success
+      ? parsed.data.find(
+          (term) =>
+            term.name.trim().toLowerCase() === wanted ||
+            term.slug.trim().toLowerCase() === wanted,
+        )
+      : undefined;
+    if (hit) ids.push(hit.id);
+    else missing.push(name);
+  }
+  return { ids, missing };
+}
+
+/** The post body as stored, so the caller can merge rankloop's owned block
+ *  into it. context=edit is what returns content.raw rather than the
+ *  shortcode-expanded render — merging into rendered output would write the
+ *  render back over the source. */
+async function findPostContentBySlug(
+  config: WordPressConfig,
+  slug: string,
+): Promise<{ id: number; link: string; content: string } | null> {
+  const payload = await wpFetch(
+    config,
+    `/wp-json/wp/v2/posts?slug=${encodeURIComponent(slug)}&context=edit`,
+  );
+  const parsed = contentPostListSchema.safeParse(payload);
+  if (!parsed.success) {
+    throw new AppError(
+      "PUBLISH_UNREACHABLE",
+      "Unexpected response shape from /wp-json/wp/v2/posts.",
+    );
+  }
+  const post = parsed.data[0];
+  if (!post) return null;
+  const content = post.content.raw ?? post.content.rendered;
+  if (content === undefined) {
+    // A site that hides content.raw from an authenticated edit context cannot
+    // be link-injected safely: merging into a render and writing it back
+    // would replace the user's source with its own output.
+    return null;
+  }
+  return { id: post.id, link: post.link, content };
+}
+
+/**
+ * Write a post body back. The only caller is link injection, and the body it
+ * passes is the post's own content with rankloop's delimited block merged in
+ * — read first, merged, written whole, because the REST API has no way to
+ * patch a fragment. Nothing else in this file replaces a post's content.
+ */
+async function updatePostContent(
+  config: WordPressConfig,
+  input: { postId: number; content: string },
+): Promise<void> {
+  await wpFetch(config, `/wp-json/wp/v2/posts/${input.postId}`, {
+    method: "POST",
+    body: { content: input.content },
+  });
+}
+
 export const WordPressClient = {
   testConnection,
   findPostBySlug,
   updatePost,
+  createPost,
+  findPageBySlug,
+  createPage,
+  resolveCategoryIds,
+  findPostContentBySlug,
+  updatePostContent,
 };

@@ -1,3 +1,5 @@
+import type { IndexationThrottle } from "@/server/features/rankloop/indexation/indexation.logic";
+import { IndexationService } from "@/server/features/rankloop/indexation/services/IndexationService";
 import { ProposalsRepository } from "@/server/features/rankloop/proposals/repositories/ProposalsRepository";
 import { PROPOSAL_TTL_DAYS } from "@/server/features/rankloop/proposals/services/ProposalsService";
 import { DECISION_SUPPRESSION_DAYS } from "@/server/features/rankloop/proposals/suppression.logic";
@@ -31,6 +33,10 @@ type NetNewRunResult = {
   /** Net-new proposals already in flight before this run. */
   outstanding: number;
   reason: string | null;
+  /** The indexation throttle when one is holding the run back — the run row
+   *  states the cap rather than reporting a smaller number as though it were
+   *  the quota. */
+  throttle: IndexationThrottle | null;
   /** Approved page types that contributed nothing, and why — rendered next
    *  to the queue rather than swallowed. */
   exclusions: NetNewExclusion[];
@@ -42,6 +48,7 @@ type NetNewQuotaView = {
   outstanding: number;
   slots: number;
   reason: string | null;
+  throttle: IndexationThrottle | null;
   exclusions: NetNewExclusion[];
 };
 
@@ -58,10 +65,11 @@ function toIsoDate(value: string): string {
  *  proposals as a side effect of being looked at would make the queue depend
  *  on who had the tab open. */
 async function readQuota(projectId: string, now: Date, limit?: number) {
-  const [stored, publishedAt, outstanding] = await Promise.all([
+  const [stored, publishedAt, outstanding, indexation] = await Promise.all([
     WriterSettingsRepository.getSettings(projectId),
     SelectionRepository.getPublishedPostDates(projectId),
     SelectionRepository.countOutstandingNetNew(projectId),
+    IndexationService.getIndexationStatus(projectId),
   ]);
   return computeNetNewSlots({
     settings: {
@@ -73,6 +81,7 @@ async function readQuota(projectId: string, now: Date, limit?: number) {
     publishedDates: publishedAt.map(toIsoDate),
     outstanding,
     today: toIsoDate(now.toISOString()),
+    throttle: indexation.throttle,
     ...(limit === undefined ? {} : { limit }),
   });
 }
@@ -95,6 +104,7 @@ async function getWritingQuota(projectId: string): Promise<NetNewQuotaView> {
       (eligible.length === 0
         ? "no planned keywords are bound to an approved page type"
         : null),
+    throttle: quota.throttle,
     exclusions,
   };
 }
@@ -131,6 +141,7 @@ async function computeNetNewProposals(
     reclaimed,
     owed: quota.owed,
     outstanding: quota.outstanding,
+    throttle: quota.throttle,
   };
   // No slots, no candidate read: the header's own quota endpoint computes the
   // exclusions on every visit, so making a cron tick pay for them too would be

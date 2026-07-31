@@ -1,22 +1,27 @@
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import {
   articleTab,
-  type ArticleTab,
+  type ArticlesPanelTab,
 } from "@/client/features/rankloop-articles/articleDisplay.logic";
 import { RankloopArticlesTable } from "@/client/features/rankloop-articles/RankloopArticlesTable";
+import { RankloopPublishedTable } from "@/client/features/rankloop-articles/RankloopPublishedTable";
 import { useArticlesPolling } from "@/client/features/rankloop-articles/useArticlesPolling";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
+import { getRankloopPublishedArticles } from "@/serverFunctions/rankloopPublishArticle";
 
 // Tab → empty-state sentence. Writing hands you the action that fills it;
 // Review says what has to happen first; Failed states the rule that puts a
 // draft there, so an empty tab reads as good news rather than a gap.
-const EMPTY_COPY: Record<ArticleTab, string> = {
+const EMPTY_COPY: Record<ArticlesPanelTab, string> = {
   writing:
     "Nothing being written right now — approve a net-new proposal above and press Write.",
   review: "Nothing waiting on you — a draft lands here once every law passes.",
   failed:
     "Nothing failed. A draft that misses the laws three times lands here with its report intact.",
+  published:
+    "Nothing published yet — open a draft that passed and press Publish. Its hub is created first.",
 };
 
 function ArticleTabButton({
@@ -53,6 +58,7 @@ function ArticlesLoadingState() {
         <div className="skeleton h-4 w-20" />
         <div className="skeleton h-4 w-16" />
         <div className="skeleton h-4 w-16" />
+        <div className="skeleton h-4 w-24" />
       </div>
       <div className="space-y-3 p-4">
         {[0, 1, 2].map((index) => (
@@ -64,16 +70,24 @@ function ArticlesLoadingState() {
 }
 
 /**
- * Drafts in flight, drafts waiting on a human, drafts the laws refused.
+ * Drafts in flight, drafts waiting on a human, drafts the laws refused, and
+ * the posts that made it onto the site.
  *
- * One unfiltered fetch feeds all three tabs, so the counts and the lists can
- * never disagree — and the shared query is the same one the Write buttons
- * above read, which is why a row starts narrating "Drafting…" here at the
- * same moment the proposal row does.
+ * One unfiltered fetch feeds the first three tabs, so their counts and lists
+ * can never disagree — and it is the same query the Write buttons above read,
+ * which is why a row starts narrating "Drafting…" here at the same moment the
+ * proposal row does. Published is its own read: a shipped post is described by
+ * its URL, its hub, the links rankloop injected and its receipt, none of which
+ * the queue's 3-second poll has any business carrying.
  */
 export function RankloopArticlesPanel({ projectId }: { projectId: string }) {
-  const [tab, setTab] = useState<ArticleTab>("writing");
+  const [tab, setTab] = useState<ArticlesPanelTab>("writing");
   const articlesQuery = useArticlesPolling(projectId);
+  const publishedQuery = useQuery({
+    queryKey: ["rankloopPublishedArticles", projectId],
+    queryFn: () => getRankloopPublishedArticles({ data: { projectId } }),
+  });
+  const published = publishedQuery.data ?? [];
 
   if (articlesQuery.isPending) return <ArticlesLoadingState />;
 
@@ -93,8 +107,10 @@ export function RankloopArticlesPanel({ projectId }: { projectId: string }) {
   );
   const review = articles.filter((row) => articleTab(row.status) === "review");
   const failed = articles.filter((row) => articleTab(row.status) === "failed");
-  const visible =
+  const queued =
     tab === "writing" ? writing : tab === "review" ? review : failed;
+  const isEmpty =
+    tab === "published" ? published.length === 0 : queued.length === 0;
 
   return (
     <div className="overflow-hidden rounded-xl border border-base-300 bg-base-100">
@@ -115,6 +131,11 @@ export function RankloopArticlesPanel({ projectId }: { projectId: string }) {
             onClick={() => setTab("failed")}
             label={`Failed (${failed.length})`}
           />
+          <ArticleTabButton
+            active={tab === "published"}
+            onClick={() => setTab("published")}
+            label={`Published (${published.length})`}
+          />
         </div>
         {/* The poll runs itself; this only says a request is in the air, so a
             3s refresh never looks like the screen jumping on its own. */}
@@ -123,10 +144,12 @@ export function RankloopArticlesPanel({ projectId }: { projectId: string }) {
         ) : null}
       </div>
 
-      {visible.length === 0 ? (
+      {isEmpty ? (
         <p className="p-6 text-sm text-base-content/60">{EMPTY_COPY[tab]}</p>
+      ) : tab === "published" ? (
+        <RankloopPublishedTable rows={published} projectId={projectId} />
       ) : (
-        <RankloopArticlesTable rows={visible} projectId={projectId} />
+        <RankloopArticlesTable rows={queued} projectId={projectId} />
       )}
 
       <p className="border-t border-base-300 px-4 py-3 text-[11px] text-base-content/45">

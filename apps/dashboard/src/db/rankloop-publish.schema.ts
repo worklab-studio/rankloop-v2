@@ -20,9 +20,13 @@ export const publishConnections = sqliteTable(
     projectId: text("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    adapter: text("adapter", { enum: ["wordpress"] }).notNull(),
-    // Encrypted JSON — for wordpress: { baseUrl, username, applicationPassword }.
-    // Reads back to clients masked ({ baseUrl, username, hasPassword }).
+    adapter: text("adapter", {
+      enum: ["wordpress", "webhook", "github"],
+    }).notNull(),
+    // Encrypted JSON, shaped per adapter (see publish/adapters/config.ts) —
+    // for wordpress: { baseUrl, username, applicationPassword }. Every shape
+    // also carries defaultPostStatus and linkInjection. Reads back to clients
+    // masked ({ baseUrl, username, hasPassword }).
     configJson: text("config_json").notNull(),
     // What the last "Test connection" observed. 'unconfigured' means saved
     // but never tested — distinct from 'failed', which is a real verdict.

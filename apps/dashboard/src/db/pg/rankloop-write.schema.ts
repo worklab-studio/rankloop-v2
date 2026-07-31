@@ -246,6 +246,13 @@ export const articles = pgTable(
     adapterRef: text("adapter_ref"),
     publishedUrl: text("published_url"),
     publishedAt: text("published_at"),
+    // What the publish injected and where: [{ contentPageId, path, outcome }].
+    // Null until the links step runs, and still null after a run that injected
+    // nothing. It is a record of edits made to pages rankloop does not own, so
+    // it is written even when the step partly failed — the UI shows what was
+    // actually touched, and a future unpublish has the list it would need to
+    // reverse.
+    linksInjectedJson: text("links_injected_json"),
     // Null in agent mode — spend is only known when this app made the calls.
     costUsd: real("cost_usd"),
     createdAt: text("created_at").notNull().default(isoNow),

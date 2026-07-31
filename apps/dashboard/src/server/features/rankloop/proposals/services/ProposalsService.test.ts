@@ -30,6 +30,9 @@ const mocks = vi.hoisted(() => ({
   selectionRepo: {
     releaseBacklogRow: vi.fn(),
   },
+  indexation: {
+    getIndexationStatus: vi.fn(),
+  },
 }));
 
 vi.mock("cloudflare:workers", () => ({ env: {} }));
@@ -50,6 +53,10 @@ vi.mock("@/server/features/projects/repositories/ProjectRepository", () => ({
 vi.mock(
   "@/server/features/rankloop/writing/repositories/SelectionRepository",
   () => ({ SelectionRepository: mocks.selectionRepo }),
+);
+vi.mock(
+  "@/server/features/rankloop/indexation/services/IndexationService",
+  () => ({ IndexationService: mocks.indexation }),
 );
 
 const project = { id: "project_1", name: "Acme", domain: "acme.com" };
@@ -231,6 +238,87 @@ describe("ProposalsService.computeProposals", () => {
       ([data]) => data.target,
     );
     expect(targets).toEqual(["/b"]);
+  });
+
+  it("keeps proposing retitle, push AND refresh at 30% indexation — the optimize track is never throttled", async () => {
+    primeComputeHappyPath();
+    // All three optimize signals armed at once, so this asserts the whole
+    // track and not just the one signal the happy path happens to fire.
+    // /c is at position 3 with a CTR far under the band — a retitle, and too
+    // high in the results to be a push. /d decayed from 20 clicks a week to 2
+    // with impressions falling alongside — a refresh.
+    mocks.proposalsRepo.getContentPagesForSignals.mockResolvedValue([
+      ...contentPages,
+      {
+        id: "cp_c",
+        url: "https://acme.com/c",
+        path: "/c",
+        title: "C",
+        publishedAt: null,
+      },
+      {
+        id: "cp_d",
+        url: "https://acme.com/d",
+        path: "/d",
+        title: "D",
+        publishedAt: "2025-01-01",
+      },
+    ]);
+    mocks.proposalsRepo.getDailyPageQueryRows.mockResolvedValue([
+      ...pushDayRows,
+      {
+        pageUrl: "https://acme.com/c",
+        query: "burr grinder settings",
+        clicks: 2,
+        impressions: 600,
+        position: 3,
+      },
+    ]);
+    mocks.proposalsRepo.getDailyPageTotals.mockResolvedValue([
+      {
+        pageUrl: "https://acme.com/d",
+        date: "2026-06-10",
+        clicks: 20,
+        impressions: 400,
+      },
+      {
+        pageUrl: "https://acme.com/d",
+        date: "2026-07-10",
+        clicks: 2,
+        impressions: 50,
+      },
+    ]);
+    // Memory reaching back past the prior window, so the decay guard opens.
+    mocks.proposalsRepo.getEarliestStoredDate.mockResolvedValue("2026-05-01");
+    // Net-new is paused at this rate. Optimize is the opposite call: a site
+    // Google is refusing to index more of is exactly the site that should be
+    // improving the pages it already has, and throttling that would starve
+    // the one track that can dig it back out.
+    mocks.indexation.getIndexationStatus.mockResolvedValue({
+      rate: 0.3,
+      indexed: 6,
+      cohort: 20,
+      minimumCohort: 5,
+      connected: true,
+      throttle: {
+        cap: 0,
+        reason: "net-new paused — 30% of recent posts are indexed",
+      },
+    });
+    const { ProposalsService } = await import("./ProposalsService");
+
+    const result = await ProposalsService.computeProposals("project_1");
+
+    expect(result.created).toBe(4);
+    const inserts = mocks.proposalsRepo.tryInsertProposal.mock.calls.map(
+      ([data]) => data,
+    );
+    expect(new Set(inserts.map((row) => row.type))).toEqual(
+      new Set(["retitle", "push", "refresh"]),
+    );
+    expect(inserts.every((row) => row.track === "optimize")).toBe(true);
+    // Not "it happens to still work" — the optimize path never asks.
+    expect(mocks.indexation.getIndexationStatus).not.toHaveBeenCalled();
   });
 
   it("passes the brand tokens into the refresh series query", async () => {

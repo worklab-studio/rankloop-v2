@@ -5,6 +5,7 @@ import {
   articleTab,
   failedLaws,
   isArticleRunning,
+  isPublishStage,
   writeCostLine,
 } from "@/client/features/rankloop-articles/articleDisplay.logic";
 
@@ -109,5 +110,25 @@ describe("writeCostLine", () => {
     expect(writeCostLine(0.11, 3)).toBe(
       "~$0.11 per attempt × up to 3 attempts = ~$0.33 at most",
     );
+  });
+});
+
+describe("isPublishStage", () => {
+  it("offers the panel only once the laws have had their say", () => {
+    expect(isPublishStage("review")).toBe(true);
+    expect(isPublishStage("approved")).toBe(true);
+    expect(isPublishStage("publishing")).toBe(true);
+    expect(isPublishStage("published")).toBe(true);
+  });
+
+  it("stays out of the way while the draft is still being written or repaired", () => {
+    expect(isPublishStage("briefing")).toBe(false);
+    expect(isPublishStage("writing")).toBe(false);
+    expect(isPublishStage("gate")).toBe(false);
+    expect(isPublishStage("fixing")).toBe(false);
+  });
+
+  it("hides on a failed draft, which has a report to read instead", () => {
+    expect(isPublishStage("failed")).toBe(false);
   });
 });

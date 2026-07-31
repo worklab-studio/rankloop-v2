@@ -10,6 +10,7 @@ import { runScheduledRankChecks } from "@/server/features/rank-tracking/services
 import { runScheduledGscSyncs } from "@/server/features/rankloop/gsc-sync/services/scheduledGscSyncs";
 import { runScheduledSiteStudies } from "@/server/features/rankloop/site-study/services/scheduledSiteStudies";
 import { runScheduledReceiptMeasurements } from "@/server/features/rankloop/receipts/services/scheduledReceiptMeasurements";
+import { runScheduledIndexationChecks } from "@/server/features/rankloop/indexation/services/scheduledIndexationChecks";
 import { runScheduledCompetitorStudies } from "@/server/features/rankloop/competitors/services/scheduledCompetitorStudies";
 import { runScheduledKeywordUniverse } from "@/server/features/rankloop/universe/services/scheduledKeywordUniverse";
 import { runScheduledNetNewProposals } from "@/server/features/rankloop/writing/services/scheduledNetNewProposals";
@@ -185,6 +186,7 @@ export { CompetitorStudyWorkflow } from "./server/workflows/CompetitorStudyWorkf
 export { PagePlanWorkflow } from "./server/workflows/PagePlanWorkflow";
 export { KeywordUniverseWorkflow } from "./server/workflows/KeywordUniverseWorkflow";
 export { ArticleWriteWorkflow } from "./server/workflows/ArticleWriteWorkflow";
+export { PublishWorkflow } from "./server/workflows/PublishWorkflow";
 // Durable Object class for the onboarding strategy chat (Agents SDK).
 export { OnboardingChatAgent } from "./server/features/onboarding/OnboardingChatAgent";
 // Durable Object class for the SAM in-app agent (Agents SDK).
@@ -203,6 +205,7 @@ export default {
       await runScheduledGscSyncs();
       await runScheduledSiteStudies();
       await runScheduledReceiptMeasurements();
+      await runScheduledIndexationChecks();
       await runScheduledCompetitorStudies();
       await runScheduledKeywordUniverse();
       await runScheduledNetNewProposals();

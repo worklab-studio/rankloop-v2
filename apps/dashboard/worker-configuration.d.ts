@@ -17,6 +17,7 @@ interface __BaseEnv_Env {
 	PAGE_PLAN_WORKFLOW: Workflow<Parameters<import("./src/server").PagePlanWorkflow['run']>[0]['payload']>;
 	KEYWORD_UNIVERSE_WORKFLOW: Workflow<Parameters<import("./src/server").KeywordUniverseWorkflow['run']>[0]['payload']>;
 	ARTICLE_WRITE_WORKFLOW: Workflow<Parameters<import("./src/server").ArticleWriteWorkflow['run']>[0]['payload']>;
+	PUBLISH_WORKFLOW: Workflow<Parameters<import("./src/server").PublishWorkflow['run']>[0]['payload']>;
 }
 declare namespace Cloudflare {
 	interface GlobalProps {

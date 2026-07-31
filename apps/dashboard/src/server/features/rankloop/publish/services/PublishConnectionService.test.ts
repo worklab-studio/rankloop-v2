@@ -4,7 +4,7 @@ import { AppError } from "@/server/lib/errors";
 type StoredRow = {
   id: string;
   projectId: string;
-  adapter: "wordpress";
+  adapter: "wordpress" | "webhook" | "github";
   configJson: string;
   status: "unconfigured" | "ok" | "failed";
   lastCheckedAt: string | null;
@@ -12,7 +12,7 @@ type StoredRow = {
 
 type UpsertInput = {
   projectId: string;
-  adapter: "wordpress";
+  adapter: "wordpress" | "webhook" | "github";
   configJson: string;
 };
 
@@ -47,12 +47,18 @@ vi.mock(
 );
 vi.mock("./wordpressClient", () => ({ WordPressClient: mocks.wp }));
 
+const password = "abcd efgh ijkl mnop qrst uvwx";
+
 const input = {
   projectId: "project_1",
-  adapter: "wordpress" as const,
-  baseUrl: "https://blog.example.com/",
-  username: "beans",
-  applicationPassword: "abcd efgh ijkl mnop qrst uvwx",
+  config: {
+    adapter: "wordpress" as const,
+    defaultPostStatus: "draft" as const,
+    linkInjection: true,
+    baseUrl: "https://blog.example.com/",
+    username: "beans",
+    applicationPassword: password,
+  },
 };
 
 function lastUpsert(): UpsertInput {
@@ -99,18 +105,21 @@ describe("PublishConnectionService.saveConnection", () => {
     const stored = lastUpsert();
     expect(stored.projectId).toBe("project_1");
     expect(stored.adapter).toBe("wordpress");
-    expect(stored.configJson).not.toContain(input.applicationPassword);
+    expect(stored.configJson).not.toContain(password);
     expect(stored.configJson).not.toContain("applicationPassword");
-    expect(stored.configJson).not.toContain(input.username);
+    expect(stored.configJson).not.toContain(input.config.username);
     // Trailing slash normalized at save, and the read-back is masked.
     expect(masked).toEqual({
       adapter: "wordpress",
       status: "unconfigured",
       lastCheckedAt: null,
       config: {
+        adapter: "wordpress",
         baseUrl: "https://blog.example.com",
         username: "beans",
-        hasPassword: true,
+        defaultPostStatus: "draft",
+        linkInjection: true,
+        hasSecret: true,
       },
     });
   });
@@ -125,7 +134,7 @@ describe("PublishConnectionService.saveConnection", () => {
     expect(config).toEqual({
       baseUrl: "https://blog.example.com",
       username: "beans",
-      applicationPassword: input.applicationPassword,
+      applicationPassword: password,
     });
   });
 
@@ -136,9 +145,11 @@ describe("PublishConnectionService.saveConnection", () => {
 
     await service.saveConnection({
       projectId: "project_1",
-      adapter: "wordpress",
-      baseUrl: "https://blog.example.com",
-      username: "renamed",
+      config: {
+        ...input.config,
+        username: "renamed",
+        applicationPassword: undefined,
+      },
     });
     mocks.repo.getForProject.mockResolvedValue(storedRowFromLastUpsert());
 
@@ -146,7 +157,7 @@ describe("PublishConnectionService.saveConnection", () => {
     expect(config).toEqual({
       baseUrl: "https://blog.example.com",
       username: "renamed",
-      applicationPassword: input.applicationPassword,
+      applicationPassword: password,
     });
   });
 
@@ -157,12 +168,81 @@ describe("PublishConnectionService.saveConnection", () => {
     await expect(
       service.saveConnection({
         projectId: "project_1",
-        adapter: "wordpress",
-        baseUrl: "https://blog.example.com",
-        username: "beans",
+        config: { ...input.config, applicationPassword: undefined },
       }),
     ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
     expect(mocks.repo.upsert).not.toHaveBeenCalled();
+  });
+
+  // The three targets keep three different credentials, and the save path only
+  // knows which one it is holding through `secretOf`. A github save that lost
+  // its token to the wordpress branch would store a connection that cannot
+  // authenticate, so the round-trip is asserted per adapter.
+  it("round-trips a GitHub connection, token and all", async () => {
+    const service = await importService();
+    mocks.repo.getForProject.mockResolvedValue(null);
+
+    const masked = await service.saveConnection({
+      projectId: "project_1",
+      config: {
+        adapter: "github",
+        defaultPostStatus: "draft",
+        linkInjection: true,
+        owner: "acme",
+        repo: "site",
+        token: "github_pat_secret",
+        baseBranch: "main",
+        contentDir: "content",
+        publicDir: "public",
+        commitMode: "pull-request",
+        siteUrl: "https://acme.com/",
+      },
+    });
+
+    expect(lastUpsert().adapter).toBe("github");
+    expect(lastUpsert().configJson).not.toContain("github_pat_secret");
+    expect(masked.config).toEqual({
+      adapter: "github",
+      owner: "acme",
+      repo: "site",
+      baseBranch: "main",
+      contentDir: "content",
+      publicDir: "public",
+      commitMode: "pull-request",
+      siteUrl: "https://acme.com",
+      defaultPostStatus: "draft",
+      linkInjection: true,
+      hasSecret: true,
+    });
+    expect(JSON.stringify(masked)).not.toContain("github_pat_secret");
+    // A github connection is not a WordPress one: the S3b retitle path asks
+    // for a WordPress config and must be told there isn't one, rather than
+    // handed a config that would 401.
+    mocks.repo.getForProject.mockResolvedValue({
+      ...storedRowFromLastUpsert(),
+      adapter: "github",
+    });
+    await expect(service.getDecryptedConfig("project_1")).resolves.toBeNull();
+  });
+
+  it("won't inherit a secret across a target switch", async () => {
+    const service = await importService();
+    await service.saveConnection(input);
+    mocks.repo.getForProject.mockResolvedValue(storedRowFromLastUpsert());
+
+    await expect(
+      service.saveConnection({
+        projectId: "project_1",
+        config: {
+          adapter: "webhook",
+          defaultPostStatus: "draft",
+          linkInjection: true,
+          url: "https://example.com/hooks/rankloop",
+          secret: undefined,
+          siteUrl: "https://example.com",
+        },
+      }),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
   });
 });
 
@@ -190,12 +270,15 @@ describe("PublishConnectionService.getMaskedConnection", () => {
       status: "ok",
       lastCheckedAt: "2026-07-31T12:00:00.000Z",
       config: {
+        adapter: "wordpress",
         baseUrl: "https://blog.example.com",
         username: "beans",
-        hasPassword: true,
+        defaultPostStatus: "draft",
+        linkInjection: true,
+        hasSecret: true,
       },
     });
-    expect(JSON.stringify(masked)).not.toContain(input.applicationPassword);
+    expect(JSON.stringify(masked)).not.toContain(password);
   });
 });
 

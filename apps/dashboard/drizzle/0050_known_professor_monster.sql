@@ -1,0 +1,1 @@
+ALTER TABLE `articles` ADD `links_injected_json` text;

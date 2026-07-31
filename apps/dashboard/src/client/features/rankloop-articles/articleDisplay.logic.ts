@@ -15,12 +15,22 @@ type Stamp = {
 export type ArticleTab = "writing" | "review" | "failed";
 
 /**
- * Which of the three tabs an article status belongs on.
+ * The tabs the queue panel renders.
+ *
+ * Published is deliberately not an `ArticleTab`: the four things worth showing
+ * about a shipped post — the live URL, the hub, the links rankloop injected
+ * and the receipt's status — live on rows the queue's poll does not carry, so
+ * that tab reads from its own query and this union is where the two meet.
+ */
+export type ArticlesPanelTab = ArticleTab | "published";
+
+/**
+ * Which of the three queue tabs an article status belongs on.
  *
  * `approved` sits beside `review` rather than in a tab of its own: the trust
  * dial decides which of the two a passing draft lands in, and a user who set
  * the dial to "titles" should still find the draft where drafts live.
- * `published` has no tab here — a shipped post is the Receipts screen's story.
+ * `published` returns null — a shipped post has left the queue.
  */
 export function articleTab(status: string): ArticleTab | null {
   if (
@@ -39,6 +49,23 @@ export function articleTab(status: string): ArticleTab | null {
 /** Is a workflow still moving this article? The polling cadence keys off it. */
 export function isArticleRunning(status: string): boolean {
   return articleTab(status) === "writing" || status === "publishing";
+}
+
+/**
+ * Does the detail screen offer the Publish panel?
+ *
+ * Only once a draft has cleared the laws. A draft still being written has
+ * nothing to publish, and a failed one has a report to read instead — showing
+ * a Publish button beside either would offer a decision the preflight is going
+ * to refuse anyway.
+ */
+export function isPublishStage(status: string): boolean {
+  return (
+    status === "review" ||
+    status === "approved" ||
+    status === "publishing" ||
+    status === "published"
+  );
 }
 
 /**

@@ -23,7 +23,9 @@ export const publishConnections = pgTable(
     projectId: text("project_id")
       .notNull()
       .references(() => projects.id, { onDelete: "cascade" }),
-    adapter: text("adapter", { enum: ["wordpress"] }).notNull(),
+    adapter: text("adapter", {
+      enum: ["wordpress", "webhook", "github"],
+    }).notNull(),
     // Encrypted JSON — for wordpress: { baseUrl, username, applicationPassword }.
     // Reads back to clients masked ({ baseUrl, username, hasPassword }).
     configJson: text("config_json").notNull(),

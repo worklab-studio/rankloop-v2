@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { waitUntil } from "cloudflare:workers";
 import { ExecutionService } from "@/server/features/rankloop/proposals/services/ExecutionService";
+import { publishAdapterCapabilities } from "@/server/features/rankloop/publish/adapters/createAdapter";
 import { PublishConnectionService } from "@/server/features/rankloop/publish/services/PublishConnectionService";
 import { captureServerEvent } from "@/server/lib/posthog";
 import { requireProjectContext } from "@/serverFunctions/middleware";
@@ -25,16 +26,22 @@ export const getRankloopPublishConnection = createServerFn({ method: "POST" })
     return PublishConnectionService.getMaskedConnection(context.projectId);
   });
 
+/** What each target supports, so the settings panel states what will happen
+ *  rather than guessing from the adapter's name. Constant per build — the
+ *  project context is required for the same reason every other read here is,
+ *  not because the answer depends on it. */
+export const getRankloopPublishCapabilities = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(getPublishConnectionSchema)
+  .handler(() => publishAdapterCapabilities);
+
 export const saveRankloopPublishConnection = createServerFn({ method: "POST" })
   .middleware(requireProjectContext)
   .validator(savePublishConnectionSchema)
   .handler(async ({ context, data }) => {
     const masked = await PublishConnectionService.saveConnection({
       projectId: context.projectId,
-      adapter: data.adapter,
-      baseUrl: data.baseUrl,
-      username: data.username,
-      applicationPassword: data.applicationPassword,
+      config: data.config,
     });
     waitUntil(
       captureServerEvent({

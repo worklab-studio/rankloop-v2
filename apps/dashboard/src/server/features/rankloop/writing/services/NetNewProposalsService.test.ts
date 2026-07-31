@@ -24,6 +24,9 @@ const mocks = vi.hoisted(() => ({
   settingsRepo: {
     getSettings: vi.fn(),
   },
+  indexation: {
+    getIndexationStatus: vi.fn(),
+  },
 }));
 
 vi.mock("cloudflare:workers", () => ({ env: {} }));
@@ -38,6 +41,10 @@ vi.mock(
 vi.mock(
   "@/server/features/rankloop/writing/repositories/WriterSettingsRepository",
   () => ({ WriterSettingsRepository: mocks.settingsRepo }),
+);
+vi.mock(
+  "@/server/features/rankloop/indexation/services/IndexationService",
+  () => ({ IndexationService: mocks.indexation }),
 );
 
 const plannedRow = {
@@ -71,6 +78,14 @@ function primeHappyPath() {
     postsPerDay: 2,
     catchupCap: 6,
     quotaStartDate: "2026-08-01",
+  });
+  mocks.indexation.getIndexationStatus.mockResolvedValue({
+    rate: 0.9,
+    indexed: 18,
+    cohort: 20,
+    minimumCohort: 5,
+    connected: true,
+    throttle: null,
   });
 }
 
@@ -191,6 +206,62 @@ describe("NetNewProposalsService.computeNetNewProposals", () => {
     ]);
   });
 
+  it("proposes one post a day when indexation has fallen below 65%", async () => {
+    primeHappyPath();
+    mocks.indexation.getIndexationStatus.mockResolvedValue({
+      rate: 0.52,
+      indexed: 13,
+      cohort: 25,
+      minimumCohort: 5,
+      connected: true,
+      throttle: {
+        cap: 1,
+        reason: "quota held at 1 — 52% of recent posts are indexed",
+      },
+    });
+    const { NetNewProposalsService } = await import("./NetNewProposalsService");
+
+    const result =
+      await NetNewProposalsService.computeNetNewProposals("project_1");
+
+    // The quota still owes two; the throttle is what handed out one.
+    expect(result.owed).toBe(2);
+    expect(result.created).toBe(1);
+    expect(result.throttle).toEqual({
+      cap: 1,
+      reason: "quota held at 1 — 52% of recent posts are indexed",
+    });
+  });
+
+  it("stops proposing entirely below 40%, and the run says why", async () => {
+    primeHappyPath();
+    mocks.indexation.getIndexationStatus.mockResolvedValue({
+      rate: 0.3,
+      indexed: 6,
+      cohort: 20,
+      minimumCohort: 5,
+      connected: true,
+      throttle: {
+        cap: 0,
+        reason: "net-new paused — 30% of recent posts are indexed",
+      },
+    });
+    const { NetNewProposalsService } = await import("./NetNewProposalsService");
+
+    const result =
+      await NetNewProposalsService.computeNetNewProposals("project_1");
+
+    expect(result.created).toBe(0);
+    expect(result.reason).toBe(
+      "net-new paused — 30% of recent posts are indexed",
+    );
+    expect(mocks.proposalsRepo.tryInsertProposal).not.toHaveBeenCalled();
+    // Publishing stops; the sweeps that keep the queue honest do not.
+    expect(
+      mocks.selectionRepo.reclaimAbandonedBacklogRows,
+    ).toHaveBeenCalledWith("project_1");
+  });
+
   it("reclaims keywords stranded by an expired proposal before it selects", async () => {
     primeHappyPath();
     mocks.proposalsRepo.expireStaleProposals.mockResolvedValue(2);
@@ -236,5 +307,35 @@ describe("NetNewProposalsService.getWritingQuota", () => {
     expect(quota.reason).toBe(
       "no planned keywords are bound to an approved page type",
     );
+  });
+
+  it("carries the throttle line to the header even while slots are still being handed out", async () => {
+    primeHappyPath();
+    mocks.indexation.getIndexationStatus.mockResolvedValue({
+      rate: 0.52,
+      indexed: 13,
+      cohort: 25,
+      minimumCohort: 5,
+      connected: true,
+      throttle: {
+        cap: 1,
+        reason: "quota held at 1 — 52% of recent posts are indexed",
+      },
+    });
+    const { NetNewProposalsService } = await import("./NetNewProposalsService");
+
+    const quota = await NetNewProposalsService.getWritingQuota("project_1");
+
+    // Two owed, one offered: without the line the header is just a smaller
+    // number with no explanation attached to it.
+    expect(quota).toMatchObject({
+      owed: 2,
+      slots: 1,
+      reason: null,
+      throttle: {
+        cap: 1,
+        reason: "quota held at 1 — 52% of recent posts are indexed",
+      },
+    });
   });
 });

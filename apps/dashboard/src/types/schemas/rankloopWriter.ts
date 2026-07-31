@@ -28,12 +28,14 @@ export const lawResultSchema = z.object({
   excerpt: z.string().nullable(),
 });
 
-/** Why an article ended in `failed`. `laws_unmet` is the ordinary exhaustion;
+/** Why an article ended where it did. `laws_unmet` is the ordinary exhaustion;
  *  the rest are the honesty cases, where no gradeable draft ever existed and
  *  the report says so instead of showing a green checklist over a half-written
  *  article. `internal_error` exists so a run that threw somewhere unexpected
  *  still lands terminally — an article wedged in `briefing` holds its
- *  proposal's one in-flight slot forever. */
+ *  proposal's one in-flight slot forever. `publish_blocked` is the only one a
+ *  passing article can carry: publishing refused it and sent it back to
+ *  review, and the checklist above the reason is still green and still true. */
 export const writeFailureSchema = z.object({
   reason: z.enum([
     "laws_unmet",
@@ -41,6 +43,7 @@ export const writeFailureSchema = z.object({
     "truncated",
     "unparseable_frontmatter",
     "internal_error",
+    "publish_blocked",
   ]),
   detail: z.string(),
 });

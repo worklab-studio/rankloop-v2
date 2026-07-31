@@ -54,6 +54,7 @@ describe("computeNetNewSlots", () => {
       outstanding: 0,
       slots: 0,
       reason: "quota off — propose manually",
+      throttle: null,
     });
   });
 
@@ -98,6 +99,7 @@ describe("computeNetNewSlots", () => {
       outstanding: 2,
       slots: 0,
       reason: "today's quota is already in the queue",
+      throttle: null,
     });
   });
 

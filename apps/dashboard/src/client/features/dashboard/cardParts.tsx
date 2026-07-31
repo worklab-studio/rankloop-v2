@@ -100,7 +100,7 @@ export function newLost(value: number | null): string {
 // writes ISO-8601. Treat the bare form as UTC rather than letting the browser
 // read it as local time — every card timestamp goes through here so the
 // difference is owned in one place.
-function parseDbTimestamp(timestamp: string): number {
+export function parseDbTimestamp(timestamp: string): number {
   return Date.parse(
     /^\d{4}-\d{2}-\d{2} /.test(timestamp)
       ? `${timestamp.replace(" ", "T")}Z`

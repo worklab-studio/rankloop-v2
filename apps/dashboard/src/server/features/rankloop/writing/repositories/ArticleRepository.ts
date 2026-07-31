@@ -106,6 +106,14 @@ type ArticleUpdate = Partial<{
   slug: string | null;
   costUsd: number;
   model: string;
+  // Written by the publish workflow. `adapterRef` lands in its own write the
+  // instant the post exists, because it is the guard that stops a resumed run
+  // from creating a second one.
+  adapter: string;
+  adapterRef: string;
+  publishedUrl: string;
+  publishedAt: string;
+  linksInjectedJson: string;
 }>;
 
 /** Every write to an article goes through here so `updated_at` can never be

@@ -5,10 +5,12 @@ import { toast } from "sonner";
 import {
   FAILED_STATE_COPY,
   isArticleRunning,
+  isPublishStage,
 } from "@/client/features/rankloop-articles/articleDisplay.logic";
 import { RankloopArticleEditor } from "@/client/features/rankloop-articles/RankloopArticleEditor";
 import { RankloopArticleReport } from "@/client/features/rankloop-articles/RankloopArticleReport";
 import { ArticleStatusBadge } from "@/client/features/rankloop-articles/RankloopArticleStatus";
+import { RankloopPublishPanel } from "@/client/features/rankloop-articles/RankloopPublishPanel";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   getRankloopArticle,
@@ -149,6 +151,17 @@ export function RankloopArticleDetail({
           <AlertTriangle className="size-4 shrink-0" />
           <span className="text-sm">{FAILED_STATE_COPY}</span>
         </div>
+      ) : null}
+
+      {/* Above the draft, not beside it: publishing is the decision this
+          screen exists to make once the laws have passed, and burying it in
+          the right column would put the site-write below the fold. */}
+      {isPublishStage(article.status) ? (
+        <RankloopPublishPanel
+          projectId={projectId}
+          articleId={article.id}
+          status={article.status}
+        />
       ) : null}
 
       <div className="grid gap-4 lg:grid-cols-3">

@@ -16,7 +16,7 @@ async function getForProject(projectId: string) {
  *  encrypted; this layer never sees plaintext credentials. */
 async function upsert(input: {
   projectId: string;
-  adapter: "wordpress";
+  adapter: (typeof publishConnections.adapter.enumValues)[number];
   configJson: string;
 }) {
   const [row] = await db

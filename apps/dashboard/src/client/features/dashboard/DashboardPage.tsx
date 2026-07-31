@@ -16,6 +16,7 @@ import {
 } from "@/client/features/dashboard/DashboardCards";
 import { AuthorityCard } from "@/client/features/dashboard/AuthorityCard";
 import { ContentInventoryCard } from "@/client/features/dashboard/ContentInventoryCard";
+import { IndexationCard } from "@/client/features/dashboard/IndexationCard";
 import { McpConnectCard } from "@/client/features/dashboard/McpConnectCard";
 import { RankloopProgressSpine } from "@/client/features/dashboard/RankloopProgressSpine";
 import { useSiteStudyPolling } from "@/client/features/dashboard/useSiteStudyPolling";
@@ -367,6 +368,15 @@ export function DashboardPage({ projectId }: { projectId: string }) {
               node: (
                 <ContentInventoryCard projectId={projectId} study={study} />
               ),
+            },
+            {
+              key: "indexation",
+              // The checks only ever run against a connected property, so the
+              // GSC flag is what decides the bucket: without one this card is
+              // a "connect Search Console" restatement and belongs below the
+              // cards that have numbers.
+              hasData: gscConnected,
+              node: <IndexationCard projectId={projectId} />,
             },
             ...(showBacklinks
               ? [

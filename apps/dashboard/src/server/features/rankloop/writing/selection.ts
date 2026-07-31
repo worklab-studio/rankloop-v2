@@ -11,6 +11,7 @@
 // would quietly stop being rankloop.
 
 import { applyPoolMix, computeQuota, type Slot } from "@rankloop/engine";
+import type { IndexationThrottle } from "@/server/features/rankloop/indexation/indexation.logic";
 import { suppressedTargets } from "@/server/features/rankloop/proposals/suppression.logic";
 import type { SuppressionInput } from "@/server/features/rankloop/proposals/suppression.logic";
 import type { ProposalFactor } from "@/types/schemas/rankloopProposals";
@@ -118,6 +119,10 @@ type NetNewSlots = {
   slots: number;
   /** Why there is nothing to do. Null whenever `slots` is positive. */
   reason: string | null;
+  /** What indexation is holding back, carried whenever the throttle is on —
+   *  including on a day it isn't what binds. A quota that silently shows a
+   *  smaller number is a bug report waiting to happen. */
+  throttle: IndexationThrottle | null;
 };
 
 /**
@@ -128,6 +133,13 @@ type NetNewSlots = {
  * the published corpus, which does not move when a proposal is created, so a
  * raw `owed` would hand out the same debt on every tick until the queue was
  * unreadable. A proposal nobody has acted on IS the debt, already recorded.
+ *
+ * The indexation throttle lands LAST, over the finished answer. Catch-up
+ * arithmetic is the engine's method and stays in @rankloop/engine; a site that
+ * wants different tolerances changes the constants in indexation.logic, not
+ * how the debt is counted. Nothing here touches the optimize track — a site
+ * Google is not indexing is exactly the site that should keep improving the
+ * pages it already has.
  */
 export function computeNetNewSlots(input: {
   settings: QuotaSettings;
@@ -138,6 +150,8 @@ export function computeNetNewSlots(input: {
   today: string;
   /** Manual ceiling from the caller; absent means the quota decides alone. */
   limit?: number;
+  /** The indexation cap; absent or null means no ceiling. */
+  throttle?: IndexationThrottle | null;
 }): NetNewSlots {
   const owed = computeQuota(
     {
@@ -148,29 +162,45 @@ export function computeNetNewSlots(input: {
     input.publishedDates,
     input.today,
   );
+  const throttle = input.throttle ?? null;
   if (owed === null) {
+    // A quota nobody turned on has nothing for the throttle to cap, and
+    // "net-new paused" over "quota off" would be two answers to one question.
     return {
       owed: null,
       outstanding: input.outstanding,
       slots: 0,
       reason: "quota off — propose manually",
+      throttle,
     };
   }
 
   const remaining = Math.max(0, owed - input.outstanding);
-  const slots =
+  const owedNow =
     input.limit === undefined ? remaining : Math.min(remaining, input.limit);
+  const slots = throttle === null ? owedNow : Math.min(owedNow, throttle.cap);
   if (slots > 0) {
-    return { owed, outstanding: input.outstanding, slots, reason: null };
+    return {
+      owed,
+      outstanding: input.outstanding,
+      slots,
+      reason: null,
+      throttle,
+    };
   }
   return {
     owed,
     outstanding: input.outstanding,
     slots: 0,
+    // The pause outranks the queue-is-full line: both are true at once often
+    // enough, and only one of them is the thing the operator has to fix.
     reason:
-      owed === 0
-        ? "nothing owed today — the quota is met"
-        : "today's quota is already in the queue",
+      throttle?.cap === 0
+        ? throttle.reason
+        : owed === 0
+          ? "nothing owed today — the quota is met"
+          : "today's quota is already in the queue",
+    throttle,
   };
 }
 

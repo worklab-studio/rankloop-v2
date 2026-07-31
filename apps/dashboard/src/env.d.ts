@@ -44,6 +44,11 @@ declare namespace Cloudflare {
     OPENROUTER_API_KEY?: string;
     // Optional OpenRouter model slug override (defaults in openrouter.ts).
     OPENROUTER_MODEL?: string;
+
+    // IndexNow submission key. Optional, and only useful once the matching
+    // <key>.txt file is served from the site's own root — absent, publishing
+    // skips the submission instead of collecting a 403 on every post.
+    INDEXNOW_KEY?: string;
   }
 }
 

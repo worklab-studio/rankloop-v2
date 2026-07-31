@@ -55,6 +55,15 @@ export function RankloopQuotaBar({ projectId }: { projectId: string }) {
     },
   });
 
+  // When indexation has throttled the run, the throttle takes the headline and
+  // the quota arithmetic drops to the line below it. Showing "2 owed today"
+  // over a run that will write one is the number without the reason — which is
+  // the shape of a bug, not of a decision.
+  const throttleReason = quota?.throttle?.reason ?? null;
+  const arithmetic = quota
+    ? quotaLine(quota)
+    : "couldn't read today's quota — propose manually";
+
   return (
     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-base-300 px-4 py-2.5">
       <div className="min-w-0">
@@ -62,11 +71,12 @@ export function RankloopQuotaBar({ projectId }: { projectId: string }) {
           <div aria-busy className="skeleton h-4 w-44" />
         ) : (
           <p className="text-sm text-base-content/70">
-            {quota
-              ? quotaLine(quota)
-              : "couldn't read today's quota — propose manually"}
+            {throttleReason ?? arithmetic}
           </p>
         )}
+        {throttleReason ? (
+          <p className="mt-1 text-xs text-base-content/55">{arithmetic}</p>
+        ) : null}
         {/* The no-data-no-page law, arriving here rather than as a surprise
             later: a pSEO type with no dataset behind it is never proposed, and
             the queue says so with the planner's own reason. */}
