@@ -194,10 +194,7 @@ packages/cli                `rankloop init` / `check` / `brief` for repo-based
                             sites: scaffolds config and a writer prompt, runs
                             the laws in CI. Makes no network call, ever.
 packages/seo-data           budget-capped DataForSEO client + spend ledger
-packages/db                 empty placeholder, no code
 
-apps/web                    dead Next.js shell from the pre-fork prototype.
-                            Not built, not deployed, kept only for reference.
 docs/PLAN.md                the full plan
 docs/JOURNEY.md             the same thing as a narrative
 tools/                      gen-parity-fixtures.py, produces the fixtures the

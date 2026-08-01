@@ -32,7 +32,6 @@ on:
       - apps/dashboard/.agents/**
       - apps/dashboard/web/**
       - apps/dashboard/badseo/**
-      - apps/web/**
       - .github/workflows/ci.yml
       - .github/workflows/docker-selfhost.yml
       - .github/workflows/publish-image.yml

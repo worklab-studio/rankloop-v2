@@ -477,13 +477,15 @@ Stated plainly rather than discovered by you at 2am.
 - **No CI builds the self-host image.** Detailed above. This is
   structural and unfixed.
 - **The Cloudflare deploy path is unverified.** Detailed above.
-- **The app is branded OpenSEO end to end** — page title, sidebar
-  wordmark, "Add your DataForSEO API key to start using OpenSEO", in-app
-  help links to `github.com/every-app/open-seo`. The rankloop screens are
-  clearly rankloop's; they sit inside someone else's shell.
-- **The repo-root `README.md` is stale.** It describes `apps/web` as the
-  dashboard and lists M3–M6 as unstarted. Neither is true. `apps/web` is a
-  dead Next.js shell still sitting in the workspace.
+- **Six user-facing "OpenSEO" strings remain**, all on hosted-mode
+  surfaces (support, billing). They were left deliberately: their correct
+  replacements are rankloop URLs that do not exist yet, and an invented
+  support address is worse than an honest upstream one. The shell itself
+  — wordmark, page title, product copy — is rankloop's, and the "Built on
+  OpenSEO (MIT)" credit in the sidebar is deliberate, not leftover.
+- **`apps/dashboard/web` is still upstream's marketing site** for
+  openseo.so. It is not part of the product and is not deployed by any
+  rankloop path; it is retained as vendored upstream content.
 - **`packages/seo-data` and `packages/cli` are not consumed by the
   dashboard.** Only `@rankloop/engine` is. The dashboard uses upstream's
   own DataForSEO client.
