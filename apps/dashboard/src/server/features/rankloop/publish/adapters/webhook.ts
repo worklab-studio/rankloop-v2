@@ -45,9 +45,13 @@ export const webhookCapabilities: PublishCapabilities = {
 // Signing
 // ---------------------------------------------------------------------------
 
-const SIGNATURE_HEADER = "X-Rankloop-Signature";
-const TIMESTAMP_HEADER = "X-Rankloop-Timestamp";
-const EVENT_HEADER = "X-Rankloop-Event";
+// Exported because the daily digest goes out over the same wire format
+// (spec 0025): one receiver, one signature check, one set of header names. A
+// second sender that spelled these itself would be one rename away from
+// silently sending envelopes nobody verifies.
+export const SIGNATURE_HEADER = "X-Rankloop-Signature";
+export const TIMESTAMP_HEADER = "X-Rankloop-Timestamp";
+export const EVENT_HEADER = "X-Rankloop-Event";
 
 function toHex(buffer: ArrayBuffer): string {
   return [...new Uint8Array(buffer)]

@@ -1,13 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
-import { env } from "cloudflare:workers";
+import { env, waitUntil } from "cloudflare:workers";
 import { z } from "zod";
 import { AutopilotService } from "@/server/features/rankloop/routines/services/AutopilotService";
 import { DigestService } from "@/server/features/rankloop/routines/services/DigestService";
 import { getRoutineDispatchStatus } from "@/server/features/rankloop/routines/services/routineDispatch";
+import { WriterSettingsRepository } from "@/server/features/rankloop/writing/repositories/WriterSettingsRepository";
+import { captureServerEvent } from "@/server/lib/posthog";
 import { requireProjectContext } from "@/serverFunctions/middleware";
 import {
   getRankloopAutopilotStatusSchema,
   getRankloopDigestsSchema,
+  resumeRankloopAutopilotSchema,
+  saveRankloopDigestDeliverySchema,
 } from "@/types/schemas/rankloopRoutines";
 
 const projectScopedSchema = z.object({ projectId: z.string().uuid() });
@@ -64,3 +68,68 @@ export const getRankloopAutopilotStatus = createServerFn({ method: "POST" })
       now: new Date(),
     }),
   );
+
+/**
+ * A human takes the kill switch off.
+ *
+ * The only way it comes off, and deliberately a person pressing something:
+ * the switch trips because three drafts in a row failed the laws or because a
+ * publish target rejected our credentials, and both of those are conditions a
+ * machine clearing its own alarm would simply walk back into. Resuming a
+ * project that was never paused is a no-op the service still records, so the
+ * button never has to be disabled on a stale read.
+ */
+export const resumeRankloopAutopilot = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(resumeRankloopAutopilotSchema)
+  .handler(async ({ context }) => {
+    await AutopilotService.resume({
+      projectId: context.projectId,
+      now: new Date(),
+    });
+    waitUntil(
+      captureServerEvent({
+        distinctId: context.userId,
+        event: "rankloop_routines:autopilot_resume",
+        organizationId: context.organizationId,
+        properties: { project_id: context.projectId },
+      }),
+    );
+    return { resumed: true };
+  });
+
+/**
+ * Which channels the morning digest goes out on.
+ *
+ * Writes only the two delivery columns, not the whole writer row: the dials
+ * are saved from the Articles screen and these from Settings, and a save that
+ * carried everything it had loaded could revert a trust dial somebody changed
+ * in the other tab. The webhook URL is the whole opt-in for that channel —
+ * null is off — so there is nothing to enable separately and nothing to
+ * disable except clearing it.
+ */
+export const saveRankloopDigestDelivery = createServerFn({ method: "POST" })
+  .middleware(requireProjectContext)
+  .validator(saveRankloopDigestDeliverySchema)
+  .handler(async ({ context, data }) => {
+    await WriterSettingsRepository.upsertDigestDelivery({
+      projectId: context.projectId,
+      digestEmail: data.digestEmail,
+      digestWebhookUrl: data.digestWebhookUrl,
+    });
+    waitUntil(
+      captureServerEvent({
+        distinctId: context.userId,
+        event: "rankloop_routines:digest_delivery_save",
+        organizationId: context.organizationId,
+        // The URL itself never leaves the row — whether one is set is the
+        // fact worth counting, and the address is the operator's business.
+        properties: {
+          project_id: context.projectId,
+          digest_email: data.digestEmail,
+          digest_webhook: data.digestWebhookUrl !== null,
+        },
+      }),
+    );
+    return { saved: true };
+  });

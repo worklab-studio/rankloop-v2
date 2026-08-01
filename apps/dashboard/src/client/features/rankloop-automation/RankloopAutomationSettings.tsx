@@ -1,18 +1,23 @@
 import { Link } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { AlertTriangle } from "lucide-react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Loader2 } from "lucide-react";
+import { toast } from "sonner";
+import { Section } from "@/client/features/rankloop-automation/RankloopAutomationParts";
+import { RankloopDigestDelivery } from "@/client/features/rankloop-automation/RankloopDigestDelivery";
 import {
   behaviorDotClass,
   dispatcherCopy,
   nextRunCopy,
   pauseCopy,
   trustDialCopy,
+  unattendedCapsCopy,
 } from "@/client/features/rankloop-automation/automationDisplay.logic";
 import { proposalTypeDisplay } from "@/client/features/rankloop-articles/proposalDisplay.logic";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   getRankloopAutopilotStatus,
   getRankloopDispatcher,
+  resumeRankloopAutopilot,
 } from "@/serverFunctions/rankloopRoutines";
 
 type AutopilotStatus = Awaited<ReturnType<typeof getRankloopAutopilotStatus>>;
@@ -22,30 +27,14 @@ type DispatcherStatus = Awaited<ReturnType<typeof getRankloopDispatcher>>;
 // Articles screen alongside the rest of the writing settings, because it is
 // saved with them; what belongs here is everything the radio buttons cannot
 // tell you — which mechanism is honouring the schedule on this deployment,
-// which action types the receipts have actually cleared, and whether the loop
-// has stopped itself.
+// which action types the receipts have actually cleared, how much one
+// unattended run may do, whether the loop has stopped itself, and where the
+// morning digest goes.
 //
 // Every sentence with a threshold in it comes from the server verbatim
 // (`autopilot.logic.ts` writes the eligibility clause and the pause reason),
 // the same way the indexation card takes its throttle reason. A screen that
 // re-derived "5 measured" would be a second opinion nobody asked for.
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="space-y-2">
-      <p className="text-xs font-medium uppercase tracking-wide text-base-content/60">
-        {title}
-      </p>
-      {children}
-    </div>
-  );
-}
 
 function DispatcherSection({ projectId }: { projectId: string }) {
   const dispatcherQuery = useQuery({
@@ -137,19 +126,88 @@ function TrustDialSection({
   );
 }
 
-function PauseAlert({ status }: { status: AutopilotStatus }) {
+// What a machine is allowed to do in one wake, stated in numbers before
+// anybody needs them. The caps come from the constants the block stops at, and
+// the paragraph after them names the two actions that are NOT in this list:
+// a surface that described three unattended phases and left the reader to
+// infer the rest would be promising automation the loop does not do.
+function UnattendedRunSection({ projectId }: { projectId: string }) {
+  return (
+    <Section title="Unattended runs">
+      <p className="text-sm">
+        On the types that have earned it, autopilot {unattendedCapsCopy()}.
+      </p>
+      <p className="text-xs text-base-content/55">
+        Every one of those decisions is stamped{" "}
+        <span className="font-medium">autopilot</span> on the receipt it
+        creates, which is what makes a bad week readable afterwards instead of
+        indistinguishable from your own.{" "}
+        <Link
+          to="/p/$projectId/receipts"
+          params={{ projectId }}
+          className="link link-primary font-medium"
+        >
+          See who decided what in Receipts →
+        </Link>
+      </p>
+      <p className="text-xs text-base-content/55">
+        Retitle and push still need your click. Autopilot can approve one, but
+        applying it edits a page that is already live through your publish
+        adapter, and that path is not gated by receipts the way writing and
+        publishing are — so it waits for you on the Opportunities screen.
+      </p>
+    </Section>
+  );
+}
+
+// The pause and the one action that clears it, in the same block: a switch a
+// person is told about and cannot see the release for is a support ticket.
+function PauseAlert({
+  projectId,
+  status,
+}: {
+  projectId: string;
+  status: AutopilotStatus;
+}) {
+  const queryClient = useQueryClient();
+  const resumeMutation = useMutation({
+    mutationFn: () => resumeRankloopAutopilot({ data: { projectId } }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["rankloopAutopilotStatus", projectId],
+      });
+      toast.success("Autopilot resumed");
+    },
+    onError: (error) => {
+      toast.error(
+        getStandardErrorMessage(error, "Couldn't resume autopilot. Try again."),
+      );
+    },
+  });
+
   const copy = pauseCopy(status.pause);
   if (copy === null) return null;
   return (
-    <div className="alert alert-warning">
+    <div className="alert alert-warning flex-wrap items-start">
       <AlertTriangle className="size-4 shrink-0" />
-      <span className="text-sm">
+      <span className="min-w-0 flex-1 text-sm">
         {copy}. Nothing publishes unattended until this clears — proposals keep
         queueing and stop at review.
         {status.adapterError
           ? ` Reconnect ${status.adapterError.adapter} to lift it.`
           : ""}
       </span>
+      <button
+        type="button"
+        className="btn btn-sm"
+        disabled={resumeMutation.isPending}
+        onClick={() => resumeMutation.mutate()}
+      >
+        {resumeMutation.isPending ? (
+          <Loader2 className="size-3 animate-spin" />
+        ) : null}
+        Resume autopilot
+      </button>
     </div>
   );
 }
@@ -199,8 +257,9 @@ export function RankloopAutomationSettings({
 
         {status ? (
           <>
-            <PauseAlert status={status} />
+            <PauseAlert projectId={projectId} status={status} />
             <TrustDialSection projectId={projectId} status={status} />
+            <UnattendedRunSection projectId={projectId} />
           </>
         ) : statusQuery.isError ? (
           <p className="text-sm text-base-content/60">
@@ -218,6 +277,10 @@ export function RankloopAutomationSettings({
             <div className="skeleton h-24 w-full" />
           </div>
         )}
+
+        {/* Delivery is about the digest rather than about the dial, so it
+            renders whether or not the autopilot read succeeded. */}
+        <RankloopDigestDelivery projectId={projectId} />
       </div>
     </div>
   );

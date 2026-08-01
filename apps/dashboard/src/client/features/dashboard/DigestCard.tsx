@@ -9,6 +9,7 @@ import {
 import { SafeExternalLink } from "@/client/components/SafeExternalLink";
 import { proposalTypeDisplay } from "@/client/features/rankloop-articles/proposalDisplay.logic";
 import {
+  deliveryFragments,
   digestDayLabel,
   measuredResultLine,
   measuredResultTone,
@@ -158,6 +159,26 @@ function BlockedSection({
   );
 }
 
+// Where this digest went, in the stamp idiom the data cards use for
+// provenance. It sits at the bottom of the expanded body rather than beside
+// the headline because it is the one line here about the plumbing rather than
+// about the site — and a webhook that silently stopped delivering is a thing
+// somebody has to be able to notice without opening a log.
+function DeliverySection({ deliveries }: { deliveries: Digest["deliveries"] }) {
+  return (
+    <p className="text-[11px] text-base-content/45">
+      {deliveryFragments(deliveries).map((fragment, index) => (
+        <span key={fragment.label}>
+          {index === 0 ? null : " · "}
+          <span className={fragment.failed ? "text-warning" : ""}>
+            {fragment.label}
+          </span>
+        </span>
+      ))}
+    </p>
+  );
+}
+
 function DigestRow({
   digest,
   open,
@@ -195,6 +216,7 @@ function DigestRow({
           <ShippedSection shipped={digest.payload.shipped} />
           <MeasuredSection measured={digest.payload.measured} />
           <BlockedSection blocked={digest.payload.blocked} />
+          <DeliverySection deliveries={digest.deliveries} />
         </div>
       ) : null}
     </li>

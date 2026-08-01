@@ -61,7 +61,7 @@ const ALLOWED_WRITES: Record<string, string> = {
   "adapters/githubApi.ts:176":
     "putFile — the one file writer: new post, new hub, the owned block (already merged), and the derived artifacts this target owns",
   "adapters/githubApi.ts:234": "createPull — opens the PR; touches no page",
-  "adapters/webhook.ts:127":
+  "adapters/webhook.ts:131":
     "the signed envelope; this target edits nothing itself, it is told what to do",
   "services/wordpressClient.ts:231":
     "updatePost — title and meta description on a post that was just created, plus the S3b retitle a human attested",

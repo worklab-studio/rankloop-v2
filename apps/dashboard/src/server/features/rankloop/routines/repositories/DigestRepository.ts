@@ -1,11 +1,14 @@
-import { and, desc, eq, gte, isNotNull, isNull, lt } from "drizzle-orm";
+import { and, asc, desc, eq, gte, isNotNull, isNull, lt } from "drizzle-orm";
 import { db } from "@/db";
 import {
   articles,
   contentPages,
   digests,
+  member,
   projects,
   receipts,
+  user,
+  writerSettings,
 } from "@/db/schema";
 
 // Reads and the one write behind the daily digest. Every read is bounded by
@@ -108,18 +111,21 @@ async function getGateFailures(projectId: string) {
 }
 
 /**
- * Store the day's digest. Returns false when one already existed.
+ * Store the day's digest. Returns the new row's id, or null when one already
+ * existed.
  *
  * `onConflictDoNothing` on the (project, date) unique is what makes the
  * morning routine safe to run twice — a retry, or both dispatchers waking on
  * the same clock, must not produce two cards or overwrite the first with a
- * later re-read of mutable rows.
+ * later re-read of mutable rows. The id comes back rather than a boolean
+ * because it is also the answer to "who do I deliver": the run that won the
+ * INSERT is the run that sends, so a retry cannot mail the same morning twice.
  */
 async function insertDigest(input: {
   projectId: string;
   forDate: string;
   payloadJson: string;
-}): Promise<boolean> {
+}): Promise<string | null> {
   const rows = await db
     .insert(digests)
     .values({ id: crypto.randomUUID(), ...input })
@@ -127,7 +133,63 @@ async function insertDigest(input: {
       target: [digests.projectId, digests.forDate],
     })
     .returning({ id: digests.id });
-  return rows.length > 0;
+  return rows[0]?.id ?? null;
+}
+
+/** Write the delivery log, once, after every channel has been tried. Scoped
+ *  by project as well as id for the same reason every other write here is:
+ *  the id came from a row we just inserted, and the scope costs nothing. */
+async function recordDeliveries(input: {
+  digestId: string;
+  projectId: string;
+  deliveredJson: string;
+}): Promise<void> {
+  await db
+    .update(digests)
+    .set({ deliveredJson: input.deliveredJson })
+    .where(
+      and(
+        eq(digests.id, input.digestId),
+        eq(digests.projectId, input.projectId),
+      ),
+    );
+}
+
+/** The project's delivery opt-ins, or null when it has never saved writer
+ *  settings — which is the same answer as both channels being off, and is why
+ *  the caller treats null as "in-app only" rather than creating a row. */
+async function getDeliveryOptIns(projectId: string) {
+  const rows = await db
+    .select({
+      digestEmail: writerSettings.digestEmail,
+      digestWebhookUrl: writerSettings.digestWebhookUrl,
+    })
+    .from(writerSettings)
+    .where(eq(writerSettings.projectId, projectId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Who the morning mail goes to: the first member of the project's
+ * organization.
+ *
+ * First rather than `role = 'owner'` because the role column is better-auth's
+ * and a self-hosted install can reach a working organization without one ever
+ * being set, whereas the creator is always the earliest membership. A digest
+ * is a report on the operator's own project, so one recipient is the whole
+ * requirement — CC-ing a team is a mailing list, not a routine.
+ */
+async function getDigestRecipient(projectId: string): Promise<string | null> {
+  const rows = await db
+    .select({ email: user.email })
+    .from(projects)
+    .innerJoin(member, eq(member.organizationId, projects.organizationId))
+    .innerJoin(user, eq(user.id, member.userId))
+    .where(eq(projects.id, projectId))
+    .orderBy(asc(member.createdAt))
+    .limit(1);
+  return rows[0]?.email ?? null;
 }
 
 /**
@@ -181,6 +243,9 @@ export const DigestRepository = {
   getMeasuredBetween,
   getGateFailures,
   insertDigest,
+  recordDeliveries,
+  getDeliveryOptIns,
+  getDigestRecipient,
   getProjectsWithoutDigest,
   getRecentDigests,
 };

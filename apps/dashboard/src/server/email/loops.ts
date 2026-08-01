@@ -127,6 +127,48 @@ export async function sendHostedVerificationEmail({
   });
 }
 
+/**
+ * Whether this deployment can mail a rankloop digest at all.
+ *
+ * A question rather than a throw, unlike the auth emails above: verification
+ * mail is load-bearing in hosted mode and a missing key there is a broken
+ * deployment, whereas the digest is an optional channel that most self-hosted
+ * installs will never configure. The caller needs "not configured" and "the
+ * send failed" to be different answers, because only one of them is worth
+ * telling the operator about every morning.
+ */
+export function isDigestEmailConfigured(): boolean {
+  return getDigestEmailConfig() !== null;
+}
+
+function getDigestEmailConfig() {
+  const apiKey = getOptionalEnv("LOOPS_API_KEY");
+  const transactionalId = getOptionalEnv("LOOPS_TRANSACTIONAL_DIGEST_ID");
+  if (!apiKey || !transactionalId) return null;
+  return { apiKey, transactionalId };
+}
+
+/** Send one morning digest. Throws on a rejected send — the routine records
+ *  that as the day's delivery failure and carries on. */
+export async function sendRankloopDigestEmail({
+  email,
+  dataVariables,
+}: {
+  email: string;
+  dataVariables: Record<string, string>;
+}) {
+  const config = getDigestEmailConfig();
+  if (!config) {
+    throw new Error("LOOPS_TRANSACTIONAL_DIGEST_ID is not configured");
+  }
+  await sendLoopsTransactionalEmail({
+    apiKey: config.apiKey,
+    email,
+    transactionalId: config.transactionalId,
+    dataVariables,
+  });
+}
+
 export async function sendHostedPasswordResetEmail({
   email,
   resetUrl,

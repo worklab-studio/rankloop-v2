@@ -1,6 +1,7 @@
 // The daily digest, wired to storage (spec 0024). `digest.logic.ts` decides
-// what the day's news is and whether there is any; this file gathers the rows
-// and writes the one that came back.
+// what the day's news is and whether there is any; this file gathers the rows,
+// writes the one that came back, and hands it to DigestDeliveryService (spec
+// 0025) — which never throws, so no channel can cost the routine its run.
 //
 // The clock is a parameter for the same reason it is one on AutopilotService:
 // the cron and the DO alarm both call the morning routine, and two halves of
@@ -18,6 +19,7 @@ import {
 } from "@/server/features/rankloop/routines/digest.logic";
 import { DigestRepository } from "@/server/features/rankloop/routines/repositories/DigestRepository";
 import { AutopilotService } from "@/server/features/rankloop/routines/services/AutopilotService";
+import { DigestDeliveryService } from "@/server/features/rankloop/routines/services/DigestDeliveryService";
 import type {
   DigestPayload,
   DigestShippedLine,
@@ -132,12 +134,16 @@ function unmetLaws(lawReportJson: string | null): string[] {
 // ---------------------------------------------------------------------------
 
 /**
- * Build and store the project's digest for the morning of `now`.
+ * Build, store and deliver the project's digest for the morning of `now`.
  *
  * Returns null on a quiet day, and stores nothing — see the header of
  * digest.logic.ts for why silence is the feature and not an omission. Returns
  * the payload without storing it a second time when the day's digest already
  * exists, which is what makes the morning routine safe to re-run.
+ *
+ * Delivery hangs off the INSERT rather than off the payload for the same
+ * reason: only the run that actually wrote the row sends, so a re-run mails
+ * nothing, and a day with no news is delivered nowhere.
  */
 async function generateDigest(input: {
   projectId: string;
@@ -194,11 +200,19 @@ async function generateDigest(input: {
   });
   if (!payload) return null;
 
-  await DigestRepository.insertDigest({
+  const digestId = await DigestRepository.insertDigest({
     projectId: input.projectId,
     forDate,
     payloadJson: JSON.stringify(payload),
   });
+  if (digestId) {
+    await DigestDeliveryService.deliverDigest({
+      projectId: input.projectId,
+      digestId,
+      payload,
+      now: input.now,
+    });
+  }
   return payload;
 }
 

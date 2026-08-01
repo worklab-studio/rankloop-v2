@@ -6,14 +6,23 @@ type ProposalTypeDisplay = { label: string; color: TagColorKey };
 // is the one colour left that reads as growth once violet is spoken for by
 // the page-type chip a write_new row also carries, and lime by its
 // fresh-question chip — a row can wear three chips, so none of them may
-// collide. Later types (merge, prune) get colors when their emitters land;
-// until then an unmapped type renders as a neutral chip instead of crashing
-// on a missing color.
+// collide.
+//
+// Merge and prune have no emitter yet, and they are still named here: the
+// Automation surface lists every type the proposals column knows, so the two
+// that may never run unattended were rendering as raw lowercase "merge" and
+// "prune" beside four proper labels — a missing translation, read as one.
+// Rose and fuchsia are what the palette has left, and they are the right
+// leftovers: both actions remove or redirect a page that exists, and warm
+// reads as caution next to emerald's growth. A type beyond these still falls
+// back to a neutral chip rather than crashing on a missing color.
 const TYPE_DISPLAY = new Map<string, ProposalTypeDisplay>([
   ["retitle", { label: "Retitle", color: "sky" }],
   ["push", { label: "Push", color: "violet" }],
   ["refresh", { label: "Refresh", color: "amber" }],
   ["write_new", { label: "Write new", color: "emerald" }],
+  ["merge", { label: "Merge", color: "fuchsia" }],
+  ["prune", { label: "Prune", color: "rose" }],
 ]);
 
 export function proposalTypeDisplay(type: string): ProposalTypeDisplay {

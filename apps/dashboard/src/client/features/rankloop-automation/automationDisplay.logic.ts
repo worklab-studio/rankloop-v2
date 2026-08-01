@@ -1,4 +1,8 @@
 import { parseDbTimestamp } from "@/client/features/dashboard/cardParts";
+import {
+  AUTOPILOT_PUBLISH_CAP,
+  AUTOPILOT_WRITE_CAP,
+} from "@/shared/rankloop-autopilot";
 
 // What the Automation surface says about the parts of the loop nobody could
 // work out from the settings form: which mechanism is honouring the schedule
@@ -106,6 +110,24 @@ export function trustDialCopy(trustDial: TrustDial): string {
 }
 
 // ---------------------------------------------------------------------------
+// What one unattended run does
+// ---------------------------------------------------------------------------
+
+/**
+ * The three phases and their ceilings, in one clause.
+ *
+ * Interpolated from the constants the block actually stops at rather than
+ * typed out as prose, because this sentence is the only promise the product
+ * makes about how much a machine may do while nobody is watching — and a
+ * promise that drifts from the code is worse than no promise. The approve
+ * phase names the quota instead of a number: its ceiling is the project's own
+ * setting, and printing a figure here would claim rankloop chose it.
+ */
+export function unattendedCapsCopy(): string {
+  return `approves up to today's quota, writes ${AUTOPILOT_WRITE_CAP} and publishes ${AUTOPILOT_PUBLISH_CAP} per run`;
+}
+
+// ---------------------------------------------------------------------------
 // Per-action verdicts
 // ---------------------------------------------------------------------------
 
@@ -116,6 +138,36 @@ export function trustDialCopy(trustDial: TrustDial): string {
  *  happening. The clause beside it carries what the receipts say. */
 export function behaviorDotClass(row: { behavior: string }): string {
   return row.behavior === "autopilot" ? "bg-success" : "bg-base-content/30";
+}
+
+// ---------------------------------------------------------------------------
+// Digest delivery
+// ---------------------------------------------------------------------------
+
+/**
+ * What is wrong with the webhook address as typed, or null while it is fine.
+ *
+ * Empty is fine and says nothing: clearing the field is how the channel is
+ * turned off, so an error there would be the form scolding somebody for
+ * switching a thing off. Everything else is checked here only so the answer
+ * arrives while the cursor is still in the field — the server validates it
+ * again, and that check is the one that counts.
+ */
+export function digestWebhookUrlError(value: string): string | null {
+  const trimmed = value.trim();
+  if (trimmed === "") return null;
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return "Enter a full address, starting with https://";
+  }
+  // `mailto:` and `file:` are both addresses the URL parser accepts and
+  // neither is somewhere a digest can be POSTed.
+  if (parsed.protocol !== "https:" && parsed.protocol !== "http:") {
+    return "The address must start with http:// or https://";
+  }
+  return null;
 }
 
 // ---------------------------------------------------------------------------

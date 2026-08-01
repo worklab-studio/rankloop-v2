@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
   autopilot: {
     getStatus: vi.fn(),
   },
+  delivery: {
+    deliverDigest: vi.fn(),
+  },
 }));
 
 vi.mock("cloudflare:workers", () => ({ env: {} }));
@@ -36,6 +39,10 @@ vi.mock(
   "@/server/features/rankloop/routines/services/AutopilotService",
   () => ({ AutopilotService: mocks.autopilot }),
 );
+vi.mock(
+  "@/server/features/rankloop/routines/services/DigestDeliveryService",
+  () => ({ DigestDeliveryService: mocks.delivery }),
+);
 
 const NOW = new Date("2026-08-01T07:00:00.000Z");
 
@@ -44,7 +51,8 @@ beforeEach(() => {
   mocks.repo.getShippedBetween.mockResolvedValue([]);
   mocks.repo.getMeasuredBetween.mockResolvedValue([]);
   mocks.repo.getGateFailures.mockResolvedValue([]);
-  mocks.repo.insertDigest.mockResolvedValue(true);
+  mocks.repo.insertDigest.mockResolvedValue("dig_1");
+  mocks.delivery.deliverDigest.mockResolvedValue([]);
   mocks.indexation.getIndexationStatus.mockResolvedValue({ throttle: null });
   mocks.autopilot.getStatus.mockResolvedValue({
     trustDial: "titles",
@@ -60,10 +68,11 @@ async function generate() {
 }
 
 describe("DigestService.generateDigest", () => {
-  it("writes nothing at all on a quiet day", async () => {
+  it("writes nothing at all on a quiet day, and delivers nothing either", async () => {
     await expect(generate()).resolves.toBeNull();
 
     expect(mocks.repo.insertDigest).not.toHaveBeenCalled();
+    expect(mocks.delivery.deliverDigest).not.toHaveBeenCalled();
   });
 
   it("reads yesterday whole, not back to the last run", async () => {
@@ -182,6 +191,42 @@ describe("DigestService.generateDigest", () => {
       forDate: "2026-08-01",
       payloadJson: JSON.stringify(payload),
     });
+  });
+
+  it("delivers the digest the INSERT actually wrote", async () => {
+    mocks.repo.getShippedBetween.mockResolvedValue([
+      {
+        articleId: "art_1",
+        title: "Best CRM for plumbers",
+        keyword: "best crm for plumbers",
+        url: null,
+      },
+    ]);
+
+    const payload = await generate();
+
+    expect(mocks.delivery.deliverDigest).toHaveBeenCalledWith({
+      projectId: "project_1",
+      digestId: "dig_1",
+      payload,
+      now: NOW,
+    });
+  });
+
+  it("delivers nothing when another run already wrote today's digest", async () => {
+    mocks.repo.getShippedBetween.mockResolvedValue([
+      {
+        articleId: "art_1",
+        title: "Best CRM for plumbers",
+        keyword: "best crm for plumbers",
+        url: null,
+      },
+    ]);
+    mocks.repo.insertDigest.mockResolvedValue(null);
+
+    await expect(generate()).resolves.not.toBeNull();
+
+    expect(mocks.delivery.deliverDigest).not.toHaveBeenCalled();
   });
 
   it("puts an autopilot pause in the digest", async () => {

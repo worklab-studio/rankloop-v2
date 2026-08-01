@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   autopilotEligibility,
+  autopilotGateStreak,
   autopilotKillSwitch,
   resolveActionBehavior,
   type AutopilotEligibility,
@@ -285,6 +286,60 @@ describe("autopilotKillSwitch", () => {
         adapterAuthError: null,
       }),
     ).toBeNull();
+  });
+});
+
+describe("autopilotGateStreak", () => {
+  it("carries the stored count forward when the whole window failed", () => {
+    const streak = autopilotGateStreak({
+      priorFailures: 2,
+      recentGateOutcomes: [gate("2026-08-01T09:00:00.000Z", false)],
+    });
+
+    expect(streak.consecutiveGateFailures).toBe(3);
+    expect(streak.pause).toEqual({
+      reason: "autopilot paused — 3 drafts in a row failed the gate",
+      since: "2026-08-01T09:00:00.000Z",
+    });
+  });
+
+  it("drops the stored count the moment a gate passes", () => {
+    const streak = autopilotGateStreak({
+      priorFailures: 2,
+      recentGateOutcomes: [
+        gate("2026-08-01T09:00:00.000Z", false),
+        gate("2026-08-01T08:00:00.000Z", true),
+      ],
+    });
+
+    expect(streak.consecutiveGateFailures).toBe(1);
+    expect(streak.pause).toBeNull();
+  });
+
+  it("counts a whole window of failures on its own", () => {
+    const streak = autopilotGateStreak({
+      priorFailures: 0,
+      recentGateOutcomes: [
+        gate("2026-08-01T09:00:00.000Z", false),
+        gate("2026-07-31T09:00:00.000Z", false),
+        gate("2026-07-30T09:00:00.000Z", false),
+      ],
+    });
+
+    expect(streak.consecutiveGateFailures).toBe(3);
+    expect(streak.pause?.since).toBe("2026-07-30T09:00:00.000Z");
+  });
+
+  it("raises no new pause on an empty window, whatever the stored count", () => {
+    const streak = autopilotGateStreak({
+      priorFailures: 3,
+      recentGateOutcomes: [],
+    });
+
+    // The count stands; the pause it caused is already on the row, and
+    // re-raising it here would re-date it on every run.
+    expect(streak.consecutiveGateFailures).toBe(3);
+    expect(streak.pause).toBeNull();
   });
 });
 

@@ -257,25 +257,75 @@ export function autopilotKillSwitch(input: {
   /** Newest first. */
   recentGateOutcomes: GateOutcome[];
   adapterAuthError: { adapter: string; at: string } | null;
+  /** Failures already counted and stored before this window — see
+   *  `autopilot_state.consecutive_gate_failures`. Omitted by callers reading
+   *  the whole history, which is the same thing as a prior of nothing. */
+  priorGateFailures?: number;
 }): AutopilotPause | null {
   if (input.adapterAuthError) {
-    return {
-      reason: `autopilot paused — ${input.adapterAuthError.adapter} rejected our credentials`,
-      since: input.adapterAuthError.at,
-    };
+    return authPause(input.adapterAuthError);
   }
-  const streak: GateOutcome[] = [];
-  for (const outcome of input.recentGateOutcomes) {
-    if (outcome.passed) break;
-    streak.push(outcome);
-    if (streak.length === AUTOPILOT_GATE_FAILURE_LIMIT) break;
-  }
-  if (streak.length < AUTOPILOT_GATE_FAILURE_LIMIT) return null;
+  return autopilotGateStreak({
+    priorFailures: input.priorGateFailures ?? 0,
+    recentGateOutcomes: input.recentGateOutcomes,
+  }).pause;
+}
+
+/** The pause a rejected credential earns, phrased the same way wherever it is
+ *  raised. */
+export function authPause(error: {
+  adapter: string;
+  at: string;
+}): AutopilotPause {
   return {
-    reason: `autopilot paused — ${AUTOPILOT_GATE_FAILURE_LIMIT} drafts in a row failed the gate`,
-    // The oldest of the three: the streak started there, and stamping it with
-    // the newest failure would date the pause to the moment we noticed.
-    since: streak[streak.length - 1].at,
+    reason: `autopilot paused — ${error.adapter} rejected our credentials`,
+    since: error.at,
+  };
+}
+
+/**
+ * The streak after folding in the verdicts that landed since it was last
+ * stored — the counter to write back, and the pause if it tripped.
+ *
+ * `priorFailures` is only carried forward when the whole window is failures.
+ * A pass anywhere in it is the streak ending, and a stored 2 that survived a
+ * passing gate would pause a project on its next bad draft rather than its
+ * third.
+ */
+export function autopilotGateStreak(input: {
+  priorFailures: number;
+  /** Newest first, the order the repository returns them in. */
+  recentGateOutcomes: GateOutcome[];
+}): { consecutiveGateFailures: number; pause: AutopilotPause | null } {
+  const streak: GateOutcome[] = [];
+  let broken = false;
+  for (const outcome of input.recentGateOutcomes) {
+    if (outcome.passed) {
+      broken = true;
+      break;
+    }
+    streak.push(outcome);
+  }
+  const consecutiveGateFailures =
+    streak.length + (broken ? 0 : input.priorFailures);
+  // A trip is an event, so it needs a verdict to have caused it. An empty
+  // window over a stored 3 is not a new pause — it is the pause already
+  // written on the row, and re-raising it here would re-date it every run.
+  if (
+    consecutiveGateFailures < AUTOPILOT_GATE_FAILURE_LIMIT ||
+    streak.length === 0
+  ) {
+    return { consecutiveGateFailures, pause: null };
+  }
+  return {
+    consecutiveGateFailures,
+    pause: {
+      reason: `autopilot paused — ${AUTOPILOT_GATE_FAILURE_LIMIT} drafts in a row failed the gate`,
+      // The oldest failure this window can see: the streak started at or
+      // before it, and stamping the pause with the newest failure would date
+      // it to the moment we noticed rather than the moment it went wrong.
+      since: streak[streak.length - 1].at,
+    },
   };
 }
 

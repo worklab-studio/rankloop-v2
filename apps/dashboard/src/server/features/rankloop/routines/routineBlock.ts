@@ -18,7 +18,8 @@ export type RoutineBlockName =
   | "competitors"
   | "universe"
   | "net-new"
-  | "digest";
+  | "digest"
+  | "autopilot";
 
 export type RoutineBlock = {
   name: RoutineBlockName;

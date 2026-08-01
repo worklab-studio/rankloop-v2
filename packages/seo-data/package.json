@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "vitest run",
+    "test:ci": "vitest run --reporter=dot",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

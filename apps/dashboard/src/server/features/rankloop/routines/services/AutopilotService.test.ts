@@ -5,6 +5,8 @@ const mocks = vi.hoisted(() => ({
     getMeasuredReceipts: vi.fn(),
     getRecentGateVerdicts: vi.fn(),
     getFailedConnection: vi.fn(),
+    getState: vi.fn(),
+    saveState: vi.fn(),
   },
   settings: {
     getSettings: vi.fn(),
@@ -65,10 +67,33 @@ function verdictRow(at: string, passed: boolean) {
   };
 }
 
+/** The stored kill switch, with the columns a test does not care about
+ *  filled in — a project that has been reconciled and is running. */
+function stateRow(
+  overrides: Partial<{
+    consecutiveGateFailures: number;
+    pausedAt: string | null;
+    pausedReason: string | null;
+    updatedAt: string;
+  }> = {},
+) {
+  return {
+    id: "state_1",
+    projectId: "project_1",
+    consecutiveGateFailures: 0,
+    pausedAt: null,
+    pausedReason: null,
+    updatedAt: "2026-07-29T07:00:00.000Z",
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   mocks.repo.getMeasuredReceipts.mockResolvedValue([]);
   mocks.repo.getRecentGateVerdicts.mockResolvedValue([]);
   mocks.repo.getFailedConnection.mockResolvedValue(null);
+  mocks.repo.getState.mockResolvedValue(null);
+  mocks.repo.saveState.mockResolvedValue(undefined);
   mocks.settings.getSettings.mockResolvedValue({ trustDial: "autopilot" });
 });
 
@@ -208,6 +233,156 @@ describe("AutopilotService.getStatus", () => {
     expect(typeNamed(await statusFor(), "retitle").reason).toBe(
       "needs 5 measured results, has 4",
     );
+  });
+});
+
+describe("AutopilotService.reconcile", () => {
+  async function reconcile() {
+    const { AutopilotService } = await import("./AutopilotService");
+    return AutopilotService.reconcile({ projectId: "project_1", now: NOW });
+  }
+
+  it("trips at exactly three, and stores the pause with the count", async () => {
+    mocks.repo.getState.mockResolvedValue(
+      stateRow({ consecutiveGateFailures: 2 }),
+    );
+    mocks.repo.getRecentGateVerdicts.mockResolvedValue([
+      verdictRow("2026-08-01T06:00:00.000Z", false),
+    ]);
+
+    const pause = await reconcile();
+
+    expect(pause?.reason).toBe(
+      "autopilot paused — 3 drafts in a row failed the gate",
+    );
+    expect(mocks.repo.saveState).toHaveBeenCalledWith({
+      projectId: "project_1",
+      consecutiveGateFailures: 3,
+      pausedAt: "2026-08-01T06:00:00.000Z",
+      pausedReason: "autopilot paused — 3 drafts in a row failed the gate",
+      updatedAt: NOW.toISOString(),
+    });
+  });
+
+  it("does not trip on two, and keeps counting", async () => {
+    mocks.repo.getState.mockResolvedValue(
+      stateRow({ consecutiveGateFailures: 1 }),
+    );
+    mocks.repo.getRecentGateVerdicts.mockResolvedValue([
+      verdictRow("2026-08-01T06:00:00.000Z", false),
+    ]);
+
+    expect(await reconcile()).toBeNull();
+    expect(mocks.repo.saveState).toHaveBeenCalledWith(
+      expect.objectContaining({ consecutiveGateFailures: 2, pausedAt: null }),
+    );
+  });
+
+  it("resets the count on a passing gate", async () => {
+    mocks.repo.getState.mockResolvedValue(
+      stateRow({ consecutiveGateFailures: 2 }),
+    );
+    mocks.repo.getRecentGateVerdicts.mockResolvedValue([
+      verdictRow("2026-08-01T06:00:00.000Z", true),
+      verdictRow("2026-08-01T05:00:00.000Z", false),
+    ]);
+
+    expect(await reconcile()).toBeNull();
+    expect(mocks.repo.saveState).toHaveBeenCalledWith(
+      expect.objectContaining({ consecutiveGateFailures: 0 }),
+    );
+  });
+
+  it("pauses immediately on a rejected credential, before any counting", async () => {
+    mocks.repo.getFailedConnection.mockResolvedValue({
+      adapter: "wordpress",
+      lastCheckedAt: "2026-08-01T06:12:00.000Z",
+    });
+    mocks.repo.getRecentGateVerdicts.mockResolvedValue([
+      verdictRow("2026-08-01T06:00:00.000Z", true),
+    ]);
+
+    const pause = await reconcile();
+
+    expect(pause).toEqual({
+      reason: "autopilot paused — wordpress rejected our credentials",
+      since: "2026-08-01T06:12:00.000Z",
+    });
+    expect(mocks.repo.saveState).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pausedReason: "autopilot paused — wordpress rejected our credentials",
+      }),
+    );
+  });
+
+  it("leaves a stored pause exactly as it is — only a human clears it", async () => {
+    mocks.repo.getState.mockResolvedValue(
+      stateRow({
+        consecutiveGateFailures: 3,
+        pausedAt: "2026-07-30T09:00:00.000Z",
+        pausedReason: "autopilot paused — 3 drafts in a row failed the gate",
+      }),
+    );
+
+    const pause = await reconcile();
+
+    expect(pause?.since).toBe("2026-07-30T09:00:00.000Z");
+    expect(mocks.repo.saveState).not.toHaveBeenCalled();
+    // The verdict window is never even read: the streak that caused this is
+    // history, and re-folding it could only re-date the pause.
+    expect(mocks.repo.getRecentGateVerdicts).not.toHaveBeenCalled();
+  });
+
+  it("writes nothing when no verdict has landed since the watermark", async () => {
+    mocks.repo.getState.mockResolvedValue(
+      stateRow({ consecutiveGateFailures: 2 }),
+    );
+
+    expect(await reconcile()).toBeNull();
+    expect(mocks.repo.saveState).not.toHaveBeenCalled();
+  });
+
+  it("folds only the verdicts newer than the stored watermark", async () => {
+    mocks.repo.getState.mockResolvedValue(
+      stateRow({ updatedAt: "2026-07-31T12:00:00.000Z" }),
+    );
+
+    await reconcile();
+
+    expect(mocks.repo.getRecentGateVerdicts).toHaveBeenCalledWith(
+      "project_1",
+      "2026-07-31T12:00:00.000Z",
+    );
+  });
+});
+
+describe("AutopilotService.resume", () => {
+  it("clears the pause and the count, and moves the watermark to now", async () => {
+    const { AutopilotService } = await import("./AutopilotService");
+
+    await AutopilotService.resume({ projectId: "project_1", now: NOW });
+
+    expect(mocks.repo.saveState).toHaveBeenCalledWith({
+      projectId: "project_1",
+      consecutiveGateFailures: 0,
+      pausedAt: null,
+      pausedReason: null,
+      updatedAt: NOW.toISOString(),
+    });
+  });
+
+  it("leaves the three failures that tripped it behind the watermark", async () => {
+    const { AutopilotService } = await import("./AutopilotService");
+    await AutopilotService.resume({ projectId: "project_1", now: NOW });
+
+    // The next run reads the row it just wrote: no pause, no count, and a
+    // window that starts after every draft that caused the last one.
+    mocks.repo.getState.mockResolvedValue(
+      stateRow({ updatedAt: NOW.toISOString() }),
+    );
+    mocks.repo.getRecentGateVerdicts.mockResolvedValue([]);
+
+    expect((await statusFor()).pause).toBeNull();
   });
 });
 

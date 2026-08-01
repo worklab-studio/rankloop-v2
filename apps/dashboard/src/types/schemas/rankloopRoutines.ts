@@ -69,11 +69,19 @@ export const digestPayloadSchema = z.object({
 
 export type DigestPayload = z.infer<typeof digestPayloadSchema>;
 
-/** deliveredJson: one entry per channel that was attempted. In-app delivery
- *  never appears here — the row itself is the in-app delivery. */
+/**
+ * deliveredJson: one entry per channel the digest went out on.
+ *
+ * `in_app` is always present at `stored` — the row itself is that delivery,
+ * and recording it is what makes an empty list mean "the delivery pass never
+ * ran" instead of "nothing was configured". A channel the project opted into
+ * but the deployment cannot serve records `failed` with the reason rather
+ * than vanishing: a digest email that never arrives should be answerable from
+ * the card, not from the logs.
+ */
 const digestDeliverySchema = z.object({
-  channel: z.enum(["email", "webhook"]),
-  status: z.enum(["sent", "failed"]),
+  channel: z.enum(["in_app", "email", "webhook"]),
+  status: z.enum(["stored", "sent", "failed"]),
   at: z.string(),
   error: z.string().nullable(),
 });
@@ -106,4 +114,31 @@ export const getRankloopDigestsSchema = z.object({
 
 export const getRankloopAutopilotStatusSchema = z.object({
   projectId: z.string().uuid(),
+});
+
+export const resumeRankloopAutopilotSchema = z.object({
+  projectId: z.string().uuid(),
+});
+
+// An http(s) address, not just any string zod would call a URL — `mailto:`
+// and `file:` both pass `.url()`, and neither is somewhere a digest can be
+// POSTed. Same rule the publish endpoint's URL uses (rankloopPublish.ts);
+// stated again rather than shared because these schema files are read one at
+// a time and a receiver has to be able to see what its URL must look like.
+const digestWebhookUrl = z
+  .string()
+  .url()
+  .max(2000)
+  .refine(
+    (value) => value.startsWith("https://") || value.startsWith("http://"),
+    "The address must start with http:// or https://",
+  );
+
+/** Both channels in one save, and both nullable-or-off rather than optional:
+ *  the form always sends its whole state, so an absent field would mean
+ *  "unchanged" on one screen and "turn it off" on another. */
+export const saveRankloopDigestDeliverySchema = z.object({
+  projectId: z.string().uuid(),
+  digestEmail: z.boolean(),
+  digestWebhookUrl: digestWebhookUrl.nullable(),
 });

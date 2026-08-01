@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  deliveryFragments,
   digestDayLabel,
   measuredResultLine,
   measuredResultTone,
@@ -73,5 +74,61 @@ describe("measuredResultTone", () => {
     expect(measuredResultTone({ ...line, verdict: "no_change" })).toBe(
       "text-base-content/60",
     );
+  });
+});
+
+describe("deliveryFragments", () => {
+  it("lists each channel that was attempted, in the order it was tried", () => {
+    expect(
+      deliveryFragments([
+        { channel: "in_app", status: "stored", error: null },
+        { channel: "email", status: "sent", error: null },
+        { channel: "webhook", status: "sent", error: null },
+      ]),
+    ).toEqual([
+      { label: "in-app stored", failed: false },
+      { label: "email sent", failed: false },
+      { label: "webhook sent", failed: false },
+    ]);
+  });
+
+  it("separates a digest nobody delivered from one delivered in-app only", () => {
+    // A stored row looks like in-app delivery whether or not the pass ran, so
+    // the empty list is the one case the stamp must not paper over.
+    expect(deliveryFragments([])).toEqual([
+      { label: "delivery not recorded", failed: false },
+    ]);
+  });
+
+  it("carries a failure's recorded reason and marks it", () => {
+    expect(
+      deliveryFragments([
+        {
+          channel: "webhook",
+          status: "failed",
+          error: "502 from the endpoint",
+        },
+      ]),
+    ).toEqual([
+      { label: "webhook failed — 502 from the endpoint", failed: true },
+    ]);
+  });
+
+  it("still marks a failure that arrived without a reason", () => {
+    expect(
+      deliveryFragments([{ channel: "email", status: "failed", error: null }]),
+    ).toEqual([{ label: "email failed", failed: true }]);
+  });
+
+  it("cuts an endpoint that answered with a page instead of a status", () => {
+    const [fragment] = deliveryFragments([
+      {
+        channel: "webhook",
+        status: "failed",
+        error: `<html><body>${"x".repeat(400)}</body></html>`,
+      },
+    ]);
+    expect(fragment.label.length).toBeLessThan(110);
+    expect(fragment.label.endsWith("…")).toBe(true);
   });
 });

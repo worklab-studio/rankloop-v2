@@ -1,5 +1,6 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
   pgTable,
@@ -337,8 +338,10 @@ export const digests = pgTable(
     // and re-deriving it a week later from mutable rows would quietly rewrite
     // history — the proposal it listed may since have been decided.
     payloadJson: text("payload_json").notNull(),
-    // [{ channel, status, at, error }] — null until a delivery is attempted,
-    // which for the in-app card is never.
+    // [{ channel, status, at, error }] — one entry per channel, written once
+    // after the row lands. in_app is always among them at 'stored': the row
+    // being here IS that delivery, and saying so beats an empty list that
+    // cannot be told apart from a delivery pass that never ran.
     deliveredJson: text("delivered_json"),
     createdAt: text("created_at").notNull().default(isoNow),
   },
@@ -486,6 +489,49 @@ export const writerSettings = pgTable("writer_settings", {
   // key is provisioned for should be too. A column default would pin a slug
   // that outlives the model it names.
   model: text("model"),
+  // Mail the morning digest to the organization owner. Off by default: the
+  // in-app card is always written, so switching this on adds a channel rather
+  // than turning the digest on, and nobody gets mail they never asked for.
+  digestEmail: boolean("digest_email").notNull().default(false),
+  // Where to POST the same digest, signed. Null is the off switch — a URL is
+  // the whole opt-in, because unlike mail there is no second thing to
+  // configure and an empty string would be a URL we would try to fetch.
+  digestWebhookUrl: text("digest_webhook_url"),
   createdAt: text("created_at").notNull().default(isoNow),
+  updatedAt: text("updated_at").notNull().default(isoNow),
+});
+
+// What the unattended loop has seen lately, and whether it has stopped itself.
+// One row per project, written by the autopilot block and by nothing else.
+//
+// Separate from writer_settings because the two are different kinds of fact:
+// the trust dial is a choice a person made, this is a record a machine wrote.
+// Merging them would put a settings save and the loop's own counter on the
+// same row, where a save could quietly clear a pause nobody resumed.
+export const autopilotState = pgTable("autopilot_state", {
+  id: text("id").primaryKey(),
+  // Unique, not the PK — the writer_settings idiom: one row per project, and
+  // the app keeps its one-uuid-per-row habit.
+  projectId: text("project_id")
+    .notNull()
+    .unique()
+    .references(() => projects.id, { onDelete: "cascade" }),
+  // Failed gates in a row. Three trips the switch (autopilot.logic.ts), a
+  // passing gate puts it back to zero, and a resume clears it. Stored rather
+  // than re-derived from the article history every run because a resume has to
+  // stick: a derived streak would re-pause on the same three drafts the moment
+  // the human said "go on".
+  consecutiveGateFailures: integer("consecutive_gate_failures")
+    .notNull()
+    .default(0),
+  // Null while autopilot is running. Set the instant it stops itself; only a
+  // human resume clears it.
+  pausedAt: text("paused_at"),
+  // The sentence the digest and Settings print, stored beside the stamp so the
+  // reason cannot drift from the pause it explains.
+  pausedReason: text("paused_reason"),
+  // Doubles as the fold watermark: gate verdicts newer than this have not been
+  // counted yet. That is what makes one reconcile idempotent under a retry and
+  // what makes a resume final — everything before it is already accounted for.
   updatedAt: text("updated_at").notNull().default(isoNow),
 });

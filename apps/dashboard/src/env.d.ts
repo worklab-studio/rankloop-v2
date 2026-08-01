@@ -29,6 +29,10 @@ declare namespace Cloudflare {
     LOOPS_API_KEY?: string;
     LOOPS_TRANSACTIONAL_VERIFY_EMAIL_ID?: string;
     LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID?: string;
+    // Template for the rankloop morning digest. Optional everywhere: absent,
+    // the digest is stored in-app and never mailed, and a project that opted
+    // into mail is told that on its own card.
+    LOOPS_TRANSACTIONAL_DIGEST_ID?: string;
     AUTUMN_SECRET_KEY?: string;
     AUTUMN_WEBHOOK_SECRET?: string;
 

@@ -143,6 +143,7 @@ export const {
   proposals,
   articles,
   writerSettings,
+  autopilotState,
   receipts,
   digests,
   llmSpend,

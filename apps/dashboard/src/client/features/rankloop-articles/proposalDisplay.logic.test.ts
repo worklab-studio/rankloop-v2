@@ -29,9 +29,22 @@ describe("proposalTypeDisplay", () => {
     });
   });
 
-  it("falls back to a neutral chip for types without an emitter yet", () => {
+  it("labels the two types that may never run unattended", () => {
+    // Automation lists every type the column knows, so these two were the
+    // only ones rendering as raw lowercase beside proper labels.
     expect(proposalTypeDisplay("merge")).toEqual({
-      label: "merge",
+      label: "Merge",
+      color: "fuchsia",
+    });
+    expect(proposalTypeDisplay("prune")).toEqual({
+      label: "Prune",
+      color: "rose",
+    });
+  });
+
+  it("falls back to a neutral chip for a type nothing has mapped", () => {
+    expect(proposalTypeDisplay("transmute")).toEqual({
+      label: "transmute",
       color: "slate",
     });
   });

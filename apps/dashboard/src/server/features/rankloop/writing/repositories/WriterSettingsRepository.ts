@@ -64,8 +64,37 @@ async function upsertSettings(input: {
     });
 }
 
+/**
+ * Save where the daily digest goes, and nothing else.
+ *
+ * Narrow on purpose. The digest channels are set on the Automation surface
+ * while the dials are set on Articles, so a save that carried the whole row
+ * would let whichever screen was open longer write back the settings it
+ * loaded — a trust dial silently reverted by somebody switching on email is
+ * exactly the kind of edit nobody would ever go looking for.
+ *
+ * The insert leaves every other column to its default, which is what
+ * WRITER_SETTINGS_DEFAULTS already promises a project with no row is running.
+ */
+async function upsertDigestDelivery(input: {
+  projectId: string;
+  digestEmail: boolean;
+  digestWebhookUrl: string | null;
+}): Promise<void> {
+  const { projectId, ...channels } = input;
+  const now = new Date().toISOString();
+  await db
+    .insert(writerSettings)
+    .values({ id: crypto.randomUUID(), projectId, ...channels, updatedAt: now })
+    .onConflictDoUpdate({
+      target: writerSettings.projectId,
+      set: { ...channels, updatedAt: now },
+    });
+}
+
 export const WriterSettingsRepository = {
   getSettings,
   getAllSettings,
   upsertSettings,
+  upsertDigestDelivery,
 };

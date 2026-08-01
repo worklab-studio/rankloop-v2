@@ -9,7 +9,9 @@
 // different days.
 
 import {
+  authPause,
   autopilotEligibility,
+  autopilotGateStreak,
   autopilotKillSwitch,
   resolveActionBehavior,
   type ActionBehavior,
@@ -43,6 +45,9 @@ type AutopilotStatus = {
   trustDial: TrustDial;
   /** Non-null when autopilot has stopped itself; the digest reports it. */
   pause: AutopilotPause | null;
+  /** Failed gates in a row as the switch has them stored — what Settings
+   *  shows beside a switch that has not tripped yet ("2 of 3"). */
+  consecutiveGateFailures: number;
   /** The publish target's last verdict on our credentials, when it was a no.
    *  Carried alongside the pause it caused so the digest can list the cause
    *  and the consequence as the two separate things they are. */
@@ -126,26 +131,33 @@ async function getStatus(input: {
   projectId: string;
   now: Date;
 }): Promise<AutopilotStatus> {
-  const [settings, receiptRows, verdictRows, failedConnection] =
-    await Promise.all([
-      WriterSettingsRepository.getSettings(input.projectId),
-      AutopilotRepository.getMeasuredReceipts(input.projectId),
-      AutopilotRepository.getRecentGateVerdicts(input.projectId),
-      AutopilotRepository.getFailedConnection(input.projectId),
-    ]);
+  const [settings, receiptRows, state, failedConnection] = await Promise.all([
+    WriterSettingsRepository.getSettings(input.projectId),
+    AutopilotRepository.getMeasuredReceipts(input.projectId),
+    AutopilotRepository.getState(input.projectId),
+    AutopilotRepository.getFailedConnection(input.projectId),
+  ]);
+  // Sequential, and only this one read is: the verdict window starts at the
+  // stored fold watermark, so it cannot be asked for until the state row is
+  // in hand. A project that has never been reconciled has no watermark and
+  // reads the whole lookback, which is what S9 did before the row existed.
+  const verdictRows = await AutopilotRepository.getRecentGateVerdicts(
+    input.projectId,
+    state?.updatedAt,
+  );
 
   const trustDial = settings?.trustDial ?? WRITER_SETTINGS_DEFAULTS.trustDial;
-  const pause = autopilotKillSwitch({
-    recentGateOutcomes: toGateOutcomes(verdictRows),
-    adapterAuthError: failedConnection
-      ? {
-          adapter: failedConnection.adapter,
-          // A connection can be marked failed without a stamp only if the
-          // status was written by hand; the row's own truth is the fallback.
-          at: failedConnection.lastCheckedAt ?? input.now.toISOString(),
-        }
-      : null,
-  });
+  // The stored pause wins outright. It is the one a human has to clear, and a
+  // freshly computed answer would either re-raise it forever or — worse —
+  // silently un-pause the loop the moment the failing drafts aged out of the
+  // lookback.
+  const pause =
+    storedPause(state) ??
+    autopilotKillSwitch({
+      recentGateOutcomes: toGateOutcomes(verdictRows),
+      adapterAuthError: toAuthError(failedConnection, input.now),
+      priorGateFailures: state?.consecutiveGateFailures ?? 0,
+    });
 
   const receipts = toSettledReceipts(receiptRows);
   const today = input.now.toISOString().slice(0, 10);
@@ -160,6 +172,7 @@ async function getStatus(input: {
   return {
     trustDial,
     pause,
+    consecutiveGateFailures: state?.consecutiveGateFailures ?? 0,
     adapterError: failedConnection
       ? {
           adapter: failedConnection.adapter,
@@ -199,7 +212,126 @@ async function getActionBehavior(input: {
   return { behavior: match.behavior, fallbackReason: match.fallbackReason };
 }
 
+// ---------------------------------------------------------------------------
+// The switch itself
+// ---------------------------------------------------------------------------
+
+type StoredState = Awaited<ReturnType<typeof AutopilotRepository.getState>>;
+
+/** The pause as the row holds it, or null while autopilot is running. */
+function storedPause(state: StoredState): AutopilotPause | null {
+  if (!state?.pausedAt) return null;
+  return {
+    // A row paused without a reason can only come from a hand-written UPDATE,
+    // and "paused, cause unknown" is still the honest thing to print.
+    reason: state.pausedReason ?? "autopilot paused",
+    since: state.pausedAt,
+  };
+}
+
+function toAuthError(
+  connection: Awaited<
+    ReturnType<typeof AutopilotRepository.getFailedConnection>
+  >,
+  now: Date,
+): { adapter: string; at: string } | null {
+  if (!connection) return null;
+  return {
+    adapter: connection.adapter,
+    // A connection can be marked failed without a stamp only if the status was
+    // written by hand; the row's own truth is the fallback.
+    at: connection.lastCheckedAt ?? now.toISOString(),
+  };
+}
+
+/**
+ * Bring the stored switch up to date, and return the pause if one is in force.
+ *
+ * The unattended block calls this before it does anything else, and it is the
+ * only writer of `autopilot_state`. Three rules, in order:
+ *
+ * 1. a pause already on the row stands until a human resumes it — nothing here
+ *    re-judges it, because the streak that caused it is now history;
+ * 2. a rejected credential pauses immediately and outranks any counting: a
+ *    wrong credential retried unattended is how an account gets locked;
+ * 3. otherwise the verdicts that landed since the watermark fold into the
+ *    counter, and three in a row trip the switch.
+ *
+ * Idempotent by the watermark: a second call in the same tick sees no new
+ * verdicts, changes nothing, and writes nothing.
+ */
+async function reconcile(input: {
+  projectId: string;
+  now: Date;
+}): Promise<AutopilotPause | null> {
+  const state = await AutopilotRepository.getState(input.projectId);
+  const held = storedPause(state);
+  if (held) return held;
+
+  const failedConnection = await AutopilotRepository.getFailedConnection(
+    input.projectId,
+  );
+  const authError = toAuthError(failedConnection, input.now);
+  if (authError) {
+    const pause = authPause(authError);
+    await AutopilotRepository.saveState({
+      projectId: input.projectId,
+      // The gate had nothing to do with this one. Carrying the count forward
+      // rather than zeroing it keeps a project that was two bad drafts deep
+      // from starting over on the day its token expired.
+      consecutiveGateFailures: state?.consecutiveGateFailures ?? 0,
+      pausedAt: pause.since,
+      pausedReason: pause.reason,
+      updatedAt: input.now.toISOString(),
+    });
+    return pause;
+  }
+
+  const verdictRows = await AutopilotRepository.getRecentGateVerdicts(
+    input.projectId,
+    state?.updatedAt,
+  );
+  const outcomes = toGateOutcomes(verdictRows);
+  // Nothing new to fold: leave the row exactly as it is. Writing it anyway
+  // would move the watermark past verdicts that landed in the same instant.
+  if (outcomes.length === 0) return null;
+
+  const streak = autopilotGateStreak({
+    priorFailures: state?.consecutiveGateFailures ?? 0,
+    recentGateOutcomes: outcomes,
+  });
+  await AutopilotRepository.saveState({
+    projectId: input.projectId,
+    consecutiveGateFailures: streak.consecutiveGateFailures,
+    pausedAt: streak.pause?.since ?? null,
+    pausedReason: streak.pause?.reason ?? null,
+    updatedAt: input.now.toISOString(),
+  });
+  return streak.pause;
+}
+
+/**
+ * A human takes the switch off.
+ *
+ * The counter goes back to zero with the pause, and the watermark moves to
+ * now, which is what makes the resume final: the three drafts that tripped it
+ * are behind the watermark and can never be folded in again. Resuming a
+ * project that was never paused is a no-op that still writes the row — the
+ * operator asked for a clean slate and gets one.
+ */
+async function resume(input: { projectId: string; now: Date }): Promise<void> {
+  await AutopilotRepository.saveState({
+    projectId: input.projectId,
+    consecutiveGateFailures: 0,
+    pausedAt: null,
+    pausedReason: null,
+    updatedAt: input.now.toISOString(),
+  });
+}
+
 export const AutopilotService = {
   getStatus,
   getActionBehavior,
+  reconcile,
+  resume,
 };

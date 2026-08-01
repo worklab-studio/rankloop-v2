@@ -1,10 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTOPILOT_PUBLISH_CAP,
+  AUTOPILOT_WRITE_CAP,
+} from "@/shared/rankloop-autopilot";
+import {
   behaviorDotClass,
+  digestWebhookUrlError,
   dispatcherCopy,
   nextRunCopy,
   pauseCopy,
   trustDialCopy,
+  unattendedCapsCopy,
 } from "./automationDisplay.logic";
 
 const NOW = Date.parse("2026-08-01T12:00:00Z");
@@ -60,6 +66,18 @@ describe("trustDialCopy", () => {
   });
 });
 
+describe("unattendedCapsCopy", () => {
+  it("prints the caps the block obeys, not a second set typed by hand", () => {
+    const copy = unattendedCapsCopy();
+    expect(copy).toContain(`writes ${AUTOPILOT_WRITE_CAP}`);
+    expect(copy).toContain(`publishes ${AUTOPILOT_PUBLISH_CAP}`);
+  });
+
+  it("names the quota for approvals rather than claiming a number of its own", () => {
+    expect(unattendedCapsCopy()).toContain("today's quota");
+  });
+});
+
 describe("behaviorDotClass", () => {
   it("fills the dot only for a type actually running unattended", () => {
     expect(behaviorDotClass({ behavior: "autopilot" })).toBe("bg-success");
@@ -70,6 +88,36 @@ describe("behaviorDotClass", () => {
     // what happens today, which is review.
     expect(behaviorDotClass({ behavior: "drafts" })).toBe("bg-base-content/30");
     expect(behaviorDotClass({ behavior: "titles" })).toBe("bg-base-content/30");
+  });
+});
+
+describe("digestWebhookUrlError", () => {
+  it("says nothing about an empty field, which is how the channel is off", () => {
+    expect(digestWebhookUrlError("")).toBeNull();
+    expect(digestWebhookUrlError("   ")).toBeNull();
+  });
+
+  it("accepts an http(s) endpoint", () => {
+    expect(
+      digestWebhookUrlError("https://example.com/hooks/rankloop"),
+    ).toBeNull();
+    expect(digestWebhookUrlError("http://localhost:8787/digest")).toBeNull();
+  });
+
+  it("rejects a scheme nothing can be POSTed to", () => {
+    // Both parse; neither is a place a digest can go.
+    expect(digestWebhookUrlError("mailto:me@example.com")).toContain(
+      "http:// or https://",
+    );
+    expect(digestWebhookUrlError("file:///etc/hosts")).toContain(
+      "http:// or https://",
+    );
+  });
+
+  it("asks for the whole address when only a host was typed", () => {
+    expect(digestWebhookUrlError("example.com/hooks")).toContain(
+      "starting with https://",
+    );
   });
 });
 
