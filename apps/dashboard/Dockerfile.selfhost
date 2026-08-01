@@ -6,12 +6,54 @@ ENV PATH=$PNPM_HOME:$PATH
 
 WORKDIR /app
 
-RUN corepack enable && corepack prepare pnpm@10.30.1 --activate
+# Two pnpm versions on purpose: the rankloop workspace root and the vendored
+# dashboard each pin their own in `packageManager`, and corepack honours the
+# nearest one. Preparing both keeps the build offline-deterministic instead of
+# letting corepack fetch mid-build.
+RUN corepack enable \
+  && corepack prepare pnpm@10.22.0 --activate \
+  && corepack prepare pnpm@10.30.1 --activate
 
-COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+# ---------------------------------------------------------------------------
+# THE BUILD CONTEXT IS THE REPO ROOT, not apps/dashboard.
+#
+# The dashboard depends on `@rankloop/engine` as `link:../../packages/engine`
+# — a path that leaves apps/dashboard. Built from apps/dashboard, `pnpm
+# install` happily writes a DANGLING symlink (it does not verify link: targets)
+# and the image builds green; the failure only lands at container start, when
+# the boot-time vite build dies with "Rollup failed to resolve import
+# '@rankloop/engine'" and the container crashloops. Hence: root context.
+#
+#   docker build -f apps/dashboard/Dockerfile.selfhost -t rankloop:local .
+#
+# Ignore rules come from the root `.dockerignore`.
+# ---------------------------------------------------------------------------
+
+# Workspace manifests first, so a source-only change does not re-resolve deps.
+# --frozen-lockfile validates every importer in pnpm-lock.yaml, so each one's
+# package.json has to be here even though only the engine gets installed.
+# tsconfig.base.json comes along because packages/engine/tsconfig.json extends
+# it, and tsup's dts pass reads it.
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
+COPY packages/cli/package.json ./packages/cli/
+COPY packages/engine/package.json ./packages/engine/
+COPY packages/seo-data/package.json ./packages/seo-data/
+COPY apps/web/package.json ./apps/web/
+RUN pnpm install --frozen-lockfile --filter @rankloop/engine
+
+# The engine ships `dist/` (see packages/engine/tsup.config.ts: the dashboard
+# links it from a separate pnpm root, so it cannot consume the raw
+# `.ts`-extension source exports). `dist/` is gitignored, so a fresh clone —
+# which is what this build always is — must build it here.
+COPY packages/engine ./packages/engine
+RUN pnpm --filter @rankloop/engine build
+
+WORKDIR /app/apps/dashboard
+
+COPY apps/dashboard/package.json apps/dashboard/pnpm-lock.yaml apps/dashboard/pnpm-workspace.yaml ./
 RUN pnpm install --frozen-lockfile
 
-COPY . .
+COPY apps/dashboard/ ./
 
 EXPOSE 3001
 

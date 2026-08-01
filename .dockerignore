@@ -1,0 +1,20 @@
+# Build context for apps/dashboard/Dockerfile.selfhost is the REPO ROOT (the
+# dashboard links @rankloop/engine from ../../packages). apps/dashboard has its
+# own .dockerignore, which docker no longer reads at this context — keep the two
+# in sync if you edit either.
+.git
+**/.github
+**/.claude
+**/.logs
+**/node_modules
+**/dist
+**/dist-sourcemaps
+**/coverage
+**/.wrangler
+**/.alchemy
+**/.turbo
+**/.tanstack
+**/*.log
+**/.env
+**/.env.*
+!**/.env.example

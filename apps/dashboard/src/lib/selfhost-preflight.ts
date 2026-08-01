@@ -208,7 +208,10 @@ function checkOptionalFeatures(env: EnvRecord, items: PreflightItem[]): void {
           name: "AI features",
           level: "info",
           message:
-            "OPENROUTER_API_KEY not set (optional) — SAM, the in-app SEO agent, is disabled.",
+            // Not "optional" the way DataForSEO is: this is the writer's key.
+            // Without it rankloop still studies, gathers keywords and plans
+            // pages — it just never writes a word of any of it.
+            "OPENROUTER_API_KEY not set — nothing gets written. Study, keywords and the page plan still run; article drafts, the onboarding chat and SAM stay dark. https://openrouter.ai/settings/keys",
         },
   );
 }

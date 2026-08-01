@@ -1,6 +1,17 @@
 services:
   open-seo:
-    image: ${OPEN_SEO_IMAGE:-ghcr.io/every-app/open-seo:latest}
+    # No rankloop image is published yet. `ghcr.io/every-app/open-seo:latest`
+    # used to be the default here — it is UPSTREAM OpenSEO and contains none of
+    # rankloop, so an unbuilt `docker compose up` silently ran a different
+    # product. Build first (below) and this resolves; skip the build and you
+    # get an honest "image not found".
+    image: ${OPEN_SEO_IMAGE:-rankloop:local}
+    # `docker compose build` / `up --build` from THIS directory. The context is
+    # the repo root because the dashboard links @rankloop/engine from
+    # ../../packages — see apps/dashboard/Dockerfile.selfhost.
+    build:
+      context: ../..
+      dockerfile: apps/dashboard/Dockerfile.selfhost
     restart: unless-stopped
     # Forward EVERY .env value into the container. The explicit `environment:`
     # list below still wins for the values it names — without this, any .env
@@ -19,21 +30,25 @@ services:
       - OPENSEO_TELEMETRY_DISABLED=${OPENSEO_TELEMETRY_DISABLED:-}
       - DO_NOT_TRACK=${DO_NOT_TRACK:-}
       - DATAFORSEO_API_KEY=${DATAFORSEO_API_KEY}
-      # Optional: AI features (SAM, onboarding chat). Without this the setup
-      # gate in the app asks for the key, but nothing here would forward it.
+      # The writer's key. rankloop's whole write side — drafts, the onboarding
+      # chat, SAM — is dark without it; only the study/plan side works.
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
       # Optional: Google Search Console. See
       # docs/SELF_HOSTING_GOOGLE_SEARCH_CONSOLE.md
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
       - BETTER_AUTH_SECRET=${BETTER_AUTH_SECRET:-}
-      # Optional: AI features (SAM, the in-app SEO agent)
-      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
-      - OPENROUTER_MODEL=${OPENROUTER_MODEL:-}
+      # Optional: IndexNow ping on publish. Only useful once <key>.txt is served
+      # from your own site root; absent, publishing skips the submission.
+      - INDEXNOW_KEY=${INDEXNOW_KEY:-}
       - VITE_SHOW_DEVTOOLS=false
     ports:
       - "127.0.0.1:${PORT:-3001}:${PORT:-3001}"
     volumes:
-      - open_seo_data:/app/.wrangler
+      # The D1/KV/R2/Durable-Object state miniflare writes, relative to the
+      # image's WORKDIR (/app/apps/dashboard). Point this anywhere else and
+      # every project, keyword and draft is lost on `docker compose down`.
+      - open_seo_data:/app/apps/dashboard/.wrangler
 volumes:
   open_seo_data:

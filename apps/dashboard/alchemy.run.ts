@@ -278,6 +278,14 @@ const dataEnv = {
   LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID: optionalVar(
     "LOOPS_TRANSACTIONAL_RESET_PASSWORD_ID",
   ),
+  // rankloop's morning digest template. Absent, the digest is stored in-app
+  // and never mailed — src/server/email/loops.ts reads it optionally.
+  LOOPS_TRANSACTIONAL_DIGEST_ID: optionalVar("LOOPS_TRANSACTIONAL_DIGEST_ID"),
+  // IndexNow ping on publish. Without this line, a self-host that sets
+  // INDEXNOW_KEY in .env.selfhost silently deploys a worker that never sees
+  // it: the alchemy CLI reads the env file into Config, not process.env, so
+  // an unbound name is simply absent at runtime.
+  INDEXNOW_KEY: optionalSecret("INDEXNOW_KEY"),
   POSTHOG_PUBLIC_KEY: optionalVar("POSTHOG_PUBLIC_KEY"),
   POSTHOG_HOST: optionalVar("POSTHOG_HOST"),
   REDDIT_PIXEL_ID: optionalSecret("REDDIT_PIXEL_ID"),

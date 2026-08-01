@@ -1,3 +1,6 @@
+# NOT USED by the self-host build any more: Dockerfile.selfhost is built from
+# the REPO ROOT (it needs packages/engine), so docker reads the root
+# .dockerignore instead. Kept for any build that still roots here; edit both.
 .git
 .github
 .claude
