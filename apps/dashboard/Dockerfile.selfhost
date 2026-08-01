@@ -38,7 +38,6 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/cli/package.json ./packages/cli/
 COPY packages/engine/package.json ./packages/engine/
 COPY packages/seo-data/package.json ./packages/seo-data/
-COPY apps/web/package.json ./apps/web/
 RUN pnpm install --frozen-lockfile --filter @rankloop/engine
 
 # The engine ships `dist/` (see packages/engine/tsup.config.ts: the dashboard
