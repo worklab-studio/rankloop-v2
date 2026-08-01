@@ -7,6 +7,7 @@ const mocks = vi.hoisted(() => ({
         (
           cutoff: string,
           limit: number,
+          projectId?: string,
         ) => Promise<Array<{ id: string; projectId: string; domain: string }>>
       >(),
   },
@@ -31,21 +32,33 @@ beforeEach(() => {
   mocks.repo.getCompetitorsDueForRefresh.mockResolvedValue([]);
 });
 
-describe("runScheduledCompetitorStudies", () => {
-  it("asks for a monthly cutoff and at most three starts per tick", async () => {
-    const { runScheduledCompetitorStudies } =
-      await import("./scheduledCompetitorStudies");
+const now = new Date("2026-08-01T09:00:00.000Z");
 
-    await runScheduledCompetitorStudies();
+describe("competitorsBlock", () => {
+  it("asks for a monthly cutoff and at most three starts per dispatch", async () => {
+    const { competitorsBlock } = await import("./scheduledCompetitorStudies");
+
+    await competitorsBlock.dueProjects(now);
 
     const [cutoff, limit] =
       mocks.repo.getCompetitorsDueForRefresh.mock.calls[0];
     expect(limit).toBe(3);
-    const ageDays = (Date.now() - Date.parse(cutoff)) / (24 * 60 * 60 * 1000);
+    const ageDays =
+      (now.getTime() - Date.parse(cutoff)) / (24 * 60 * 60 * 1000);
     expect(Math.round(ageDays)).toBe(30);
   });
 
-  it("isolates a failing competitor so the rest of the tick still runs", async () => {
+  it("reports each due competitor's project once", async () => {
+    mocks.repo.getCompetitorsDueForRefresh.mockResolvedValue([
+      { id: "comp_1", projectId: "project_1", domain: "one.com" },
+      { id: "comp_2", projectId: "project_1", domain: "two.com" },
+    ]);
+    const { competitorsBlock } = await import("./scheduledCompetitorStudies");
+
+    expect(await competitorsBlock.dueProjects(now)).toEqual(["project_1"]);
+  });
+
+  it("isolates a failing competitor so the rest of the project still runs", async () => {
     mocks.repo.getCompetitorsDueForRefresh.mockResolvedValue([
       { id: "comp_1", projectId: "project_1", domain: "one.com" },
       { id: "comp_2", projectId: "project_1", domain: "two.com" },
@@ -53,10 +66,9 @@ describe("runScheduledCompetitorStudies", () => {
     mocks.service.startStudy
       .mockRejectedValueOnce(new Error("workflow engine down"))
       .mockResolvedValueOnce({ runId: "run_2", alreadyRunning: false });
-    const { runScheduledCompetitorStudies } =
-      await import("./scheduledCompetitorStudies");
+    const { competitorsBlock } = await import("./scheduledCompetitorStudies");
 
-    await runScheduledCompetitorStudies();
+    await competitorsBlock.runForProject("project_1", now);
 
     expect(mocks.service.startStudy).toHaveBeenCalledTimes(2);
   });

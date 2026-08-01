@@ -212,7 +212,8 @@ async function reclaimAbandonedBacklogRows(projectId: string): Promise<number> {
  * same grouping so the block costs two scans of one small table per tick, not
  * two queries per project.
  */
-async function getNetNewProjectStats() {
+async function getNetNewProjectStats(projectId?: string) {
+  const scoped = projectId ? eq(proposals.projectId, projectId) : undefined;
   const [outstanding, lastProposed] = await Promise.all([
     db
       .select({
@@ -223,6 +224,7 @@ async function getNetNewProjectStats() {
       .where(
         and(
           eq(proposals.track, "net_new"),
+          scoped,
           inArray(proposals.status, [...OUTSTANDING_STATUSES]),
         ),
       )
@@ -233,7 +235,7 @@ async function getNetNewProjectStats() {
         lastProposedAt: max(proposals.createdAt),
       })
       .from(proposals)
-      .where(eq(proposals.track, "net_new"))
+      .where(and(eq(proposals.track, "net_new"), scoped))
       .groupBy(proposals.projectId),
   ]);
 

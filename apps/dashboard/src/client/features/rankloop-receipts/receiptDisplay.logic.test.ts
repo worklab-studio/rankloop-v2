@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  decidedByLabel,
   formatClicksDelta,
   formatReceiptPosition,
   receiptClicksDelta,
@@ -31,6 +32,18 @@ describe("receiptStatusDisplay", () => {
       label: "mystery",
       color: "slate",
     });
+  });
+});
+
+describe("decidedByLabel", () => {
+  it("separates the machine's decisions from a person's", () => {
+    expect(decidedByLabel("autopilot")).toBe("autopilot");
+    expect(decidedByLabel("human")).toBe("human");
+  });
+
+  it("chips nothing for a receipt that predates the column", () => {
+    expect(decidedByLabel(null)).toBeNull();
+    expect(decidedByLabel("")).toBeNull();
   });
 });
 

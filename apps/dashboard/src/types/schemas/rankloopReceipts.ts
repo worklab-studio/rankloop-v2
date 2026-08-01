@@ -65,6 +65,9 @@ export type RankloopReceiptListItem = RankloopReceipt & {
   target: string;
   baseline: ReceiptBaseline | null;
   result: ReceiptResult | null;
+  /** 'human' | 'autopilot' from the proposal that opened this receipt, null
+   *  when there is no proposal behind it or it predates the column. */
+  decidedBy: string | null;
 };
 
 // ---------------------------------------------------------------------------

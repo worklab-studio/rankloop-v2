@@ -12,6 +12,7 @@ import {
   lt,
   lte,
   max,
+  min,
   or,
   sql,
 } from "drizzle-orm";
@@ -145,9 +146,36 @@ function latestStoredDates() {
  * advance. The baseline arm stays unconditional: the flip to 'measuring' needs
  * no stored data, only the calendar.
  */
+// `projectId` narrows the same predicate to one project — see the note on
+// GscSyncRepository.getProjectsDueForSync: one due-rule, two dispatchers. The
+// predicate itself lives here rather than inside either query because the
+// dispatcher asks it twice with different projections ("which projects owe
+// work" then "which rows"), and two copies of this WHERE would eventually
+// disagree about what due means.
+function dueReceiptsWhere(
+  latestDates: ReturnType<typeof latestStoredDates>,
+  today: string,
+  projectId?: string,
+) {
+  return and(
+    isNull(projects.archivedAt),
+    projectId ? eq(receipts.projectId, projectId) : undefined,
+    or(isNull(receipts.nextCheckAt), lte(receipts.nextCheckAt, today)),
+    or(
+      and(eq(receipts.status, "baseline"), lte(receipts.windowStart, today)),
+      and(
+        inArray(receipts.status, ["baseline", "measuring"]),
+        lte(receipts.windowEnd, today),
+        gte(latestDates.latestDate, receipts.windowEnd),
+      ),
+    ),
+  );
+}
+
 async function getDueReceipts(
   today: string,
   limit: number,
+  projectId?: string,
 ): Promise<RankloopReceipt[]> {
   const latestDates = latestStoredDates();
   const rows = await db
@@ -155,33 +183,41 @@ async function getDueReceipts(
     .from(receipts)
     .innerJoin(projects, eq(receipts.projectId, projects.id))
     .leftJoin(latestDates, eq(latestDates.projectId, receipts.projectId))
-    .where(
-      and(
-        isNull(projects.archivedAt),
-        or(isNull(receipts.nextCheckAt), lte(receipts.nextCheckAt, today)),
-        or(
-          and(
-            eq(receipts.status, "baseline"),
-            lte(receipts.windowStart, today),
-          ),
-          and(
-            inArray(receipts.status, ["baseline", "measuring"]),
-            lte(receipts.windowEnd, today),
-            gte(latestDates.latestDate, receipts.windowEnd),
-          ),
-        ),
-      ),
-    )
+    .where(dueReceiptsWhere(latestDates, today, projectId))
     .orderBy(asc(receipts.createdAt))
     .limit(limit);
   return rows.map((row) => row.receipt);
+}
+
+/** Which projects hold at least one receipt the pass could advance right now.
+ *  Same predicate as the row read above, projected to distinct projects and
+ *  ordered oldest-receipt-first so the per-tick project cap stays fair. */
+async function getProjectIdsWithDueReceipts(
+  today: string,
+  limit: number,
+  projectId?: string,
+): Promise<string[]> {
+  const latestDates = latestStoredDates();
+  const rows = await db
+    .select({ projectId: receipts.projectId })
+    .from(receipts)
+    .innerJoin(projects, eq(receipts.projectId, projects.id))
+    .leftJoin(latestDates, eq(latestDates.projectId, receipts.projectId))
+    .where(dueReceiptsWhere(latestDates, today, projectId))
+    .groupBy(receipts.projectId)
+    .orderBy(asc(min(receipts.createdAt)))
+    .limit(limit);
+  return rows.map((row) => row.projectId);
 }
 
 /** How many open receipts are past their window but waiting on the sync. The
  *  due-check no longer returns them (they cannot transition), so this count is
  *  what keeps "N waiting on data" in the cron line — one indexed aggregate,
  *  not 50 rows that would each be looked at and dropped. */
-async function countReceiptsWaitingOnData(today: string): Promise<number> {
+async function countReceiptsWaitingOnData(
+  today: string,
+  projectId?: string,
+): Promise<number> {
   const latestDates = latestStoredDates();
   const rows = await db
     .select({ waiting: count() })
@@ -191,6 +227,7 @@ async function countReceiptsWaitingOnData(today: string): Promise<number> {
     .where(
       and(
         isNull(projects.archivedAt),
+        projectId ? eq(receipts.projectId, projectId) : undefined,
         inArray(receipts.status, ["baseline", "measuring"]),
         lte(receipts.windowEnd, today),
         or(
@@ -286,18 +323,44 @@ async function getExecutedProposalsOnPageAfter(
 
 /** Newest execution first — the Receipts screen's one ordering. The left
  *  join resolves contentPageId (a plain id, no FK) to the page's current
- *  path for display; a pruned page simply yields a null path. */
-async function getReceiptsForProject(
-  projectId: string,
-): Promise<Array<{ receipt: RankloopReceipt; pagePath: string | null }>> {
+ *  path for display; a pruned page simply yields a null path.
+ *
+ *  The second join carries provenance across. `decidedBy` lives on the
+ *  proposal, not on the receipt, and the two are joined on the execution
+ *  instant because both write paths stamp it into both rows inside one
+ *  transaction — `markDoneWithReceipt` and `markPublishedWithReceipt` set
+ *  `proposals.executedAt` and `receipts.createdAt` from the same string.
+ *  Matching on `(project, type, instant)` therefore hits exactly the proposal
+ *  that opened this receipt, and a receipt with no proposal behind it (an
+ *  agent-reported page) yields null, which the chip renders as no chip at all
+ *  rather than guessing "human". */
+async function getReceiptsForProject(projectId: string): Promise<
+  Array<{
+    receipt: RankloopReceipt;
+    pagePath: string | null;
+    decidedBy: string | null;
+  }>
+> {
   return db
-    .select({ receipt: receipts, pagePath: contentPages.path })
+    .select({
+      receipt: receipts,
+      pagePath: contentPages.path,
+      decidedBy: proposals.decidedBy,
+    })
     .from(receipts)
     .leftJoin(
       contentPages,
       and(
         eq(contentPages.id, receipts.contentPageId),
         eq(contentPages.projectId, receipts.projectId),
+      ),
+    )
+    .leftJoin(
+      proposals,
+      and(
+        eq(proposals.projectId, receipts.projectId),
+        eq(proposals.type, receipts.actionType),
+        eq(proposals.executedAt, receipts.createdAt),
       ),
     )
     .where(eq(receipts.projectId, projectId))
@@ -309,6 +372,7 @@ export const ReceiptsRepository = {
   getPageWindowRows,
   getSiteWindowTotals,
   getDueReceipts,
+  getProjectIdsWithDueReceipts,
   countReceiptsWaitingOnData,
   deferReceipt,
   markMeasuring,

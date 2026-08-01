@@ -81,6 +81,15 @@
         "name": "SAM_CHAT",
         "class_name": "SamChatAgent",
       },
+      // rankloop's routine dispatcher. One instance per project, holding an
+      // alarm-backed schedule (Agents SDK). This is the ONLY mechanism that
+      // runs the daily routines in local dev and the Docker self-host: the
+      // cron trigger below fires on real Cloudflare and nowhere else, while
+      // DO alarms fire in miniflare too.
+      {
+        "name": "ROUTINE_SCHEDULER",
+        "class_name": "RoutineSchedulerAgent",
+      },
     ],
   },
   "migrations": [
@@ -92,7 +101,14 @@
       "tag": "v2",
       "new_sqlite_classes": ["SamChatAgent"],
     },
+    {
+      "tag": "v3",
+      "new_sqlite_classes": ["RoutineSchedulerAgent"],
+    },
   ],
+  // Fires on real Cloudflare only. Everything it drives is also driven by the
+  // ROUTINE_SCHEDULER alarms above, so self-host parity does not depend on
+  // this line — see docs/DASHBOARD-JOBS.md.
   "triggers": {
     "crons": ["*/15 * * * *"],
   },

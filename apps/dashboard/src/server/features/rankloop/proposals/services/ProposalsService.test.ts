@@ -334,25 +334,45 @@ describe("ProposalsService.computeProposals", () => {
   });
 });
 
+/** The call under test. `decidedBy` has no default in the service, so every
+ *  case here has to name who made the decision — which is the point. */
+async function decide(
+  proposalId: string,
+  decision: "approved" | "declined",
+  decidedBy: "human" | "autopilot" = "human",
+) {
+  const { ProposalsService } = await import("./ProposalsService");
+  return ProposalsService.decideProposal({
+    projectId: "project_1",
+    proposalId,
+    decision,
+    decidedBy,
+  });
+}
+
 describe("ProposalsService.decideProposal", () => {
   it("returns the decided row when the CAS transition wins", async () => {
     const decided = { id: "prop_1", type: "retitle", target: "/a" };
     mocks.proposalsRepo.updateDecision.mockResolvedValue(decided);
-    const { ProposalsService } = await import("./ProposalsService");
 
-    await expect(
-      ProposalsService.decideProposal({
-        projectId: "project_1",
-        proposalId: "prop_1",
-        decision: "approved",
-      }),
-    ).resolves.toEqual(decided);
+    await expect(decide("prop_1", "approved")).resolves.toEqual(decided);
     expect(mocks.proposalsRepo.updateDecision).toHaveBeenCalledWith({
       projectId: "project_1",
       proposalId: "prop_1",
       status: "approved",
       decidedAt: "2026-07-31T12:00:00.000Z",
+      decidedBy: "human",
     });
+  });
+
+  it("records a decision no human made as 'autopilot'", async () => {
+    mocks.proposalsRepo.updateDecision.mockResolvedValue({ id: "prop_1" });
+
+    await decide("prop_1", "approved", "autopilot");
+
+    expect(mocks.proposalsRepo.updateDecision).toHaveBeenCalledWith(
+      expect.objectContaining({ decidedBy: "autopilot" }),
+    );
   });
 
   it("rejects a proposal that is no longer 'proposed' with CONFLICT", async () => {
@@ -361,15 +381,10 @@ describe("ProposalsService.decideProposal", () => {
       id: "prop_1",
       status: "declined",
     });
-    const { ProposalsService } = await import("./ProposalsService");
 
-    await expect(
-      ProposalsService.decideProposal({
-        projectId: "project_1",
-        proposalId: "prop_1",
-        decision: "approved",
-      }),
-    ).rejects.toMatchObject({ code: "CONFLICT" });
+    await expect(decide("prop_1", "approved")).rejects.toMatchObject({
+      code: "CONFLICT",
+    });
   });
 
   it("returns a declined net-new keyword to 'planned', keeping its page type binding", async () => {
@@ -380,13 +395,8 @@ describe("ProposalsService.decideProposal", () => {
       target: "burr size",
       keywordBacklogId: "kw_1",
     });
-    const { ProposalsService } = await import("./ProposalsService");
 
-    await ProposalsService.decideProposal({
-      projectId: "project_1",
-      proposalId: "prop_2",
-      decision: "declined",
-    });
+    await decide("prop_2", "declined");
 
     expect(mocks.selectionRepo.releaseBacklogRow).toHaveBeenCalledWith(
       "project_1",
@@ -402,13 +412,8 @@ describe("ProposalsService.decideProposal", () => {
       target: "burr size",
       keywordBacklogId: "kw_1",
     });
-    const { ProposalsService } = await import("./ProposalsService");
 
-    await ProposalsService.decideProposal({
-      projectId: "project_1",
-      proposalId: "prop_2",
-      decision: "approved",
-    });
+    await decide("prop_2", "approved");
 
     expect(mocks.selectionRepo.releaseBacklogRow).not.toHaveBeenCalled();
   });
@@ -421,13 +426,8 @@ describe("ProposalsService.decideProposal", () => {
       target: "/a",
       keywordBacklogId: null,
     });
-    const { ProposalsService } = await import("./ProposalsService");
 
-    await ProposalsService.decideProposal({
-      projectId: "project_1",
-      proposalId: "prop_1",
-      decision: "declined",
-    });
+    await decide("prop_1", "declined");
 
     expect(mocks.selectionRepo.releaseBacklogRow).not.toHaveBeenCalled();
   });
@@ -435,15 +435,10 @@ describe("ProposalsService.decideProposal", () => {
   it("rejects a missing proposal with NOT_FOUND", async () => {
     mocks.proposalsRepo.updateDecision.mockResolvedValue(null);
     mocks.proposalsRepo.getProposalById.mockResolvedValue(null);
-    const { ProposalsService } = await import("./ProposalsService");
 
-    await expect(
-      ProposalsService.decideProposal({
-        projectId: "project_1",
-        proposalId: "prop_missing",
-        decision: "declined",
-      }),
-    ).rejects.toMatchObject({ code: "NOT_FOUND" });
+    await expect(decide("prop_missing", "declined")).rejects.toMatchObject({
+      code: "NOT_FOUND",
+    });
   });
 });
 

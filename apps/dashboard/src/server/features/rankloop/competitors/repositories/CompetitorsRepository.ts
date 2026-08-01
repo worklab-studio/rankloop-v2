@@ -132,7 +132,13 @@ async function updateCompetitor(
  * Postgres last), which only changes which never-studied competitor a busy
  * tick picks up first — every one of them is still due on the next tick.
  */
-async function getCompetitorsDueForRefresh(cutoff: string, limit: number) {
+// `projectId` narrows the same predicate to one project — see the note on
+// GscSyncRepository.getProjectsDueForSync: one due-rule, two dispatchers.
+async function getCompetitorsDueForRefresh(
+  cutoff: string,
+  limit: number,
+  projectId?: string,
+) {
   // Only a young active run suppresses its competitor — an older one is more
   // likely a stranded row than a live study (see activeRunWedge).
   const activeRuns = db
@@ -157,6 +163,7 @@ async function getCompetitorsDueForRefresh(cutoff: string, limit: number) {
       and(
         eq(competitors.status, "tracked"),
         isNull(projects.archivedAt),
+        projectId ? eq(competitors.projectId, projectId) : undefined,
         or(
           isNull(competitors.lastStudiedAt),
           lt(competitors.lastStudiedAt, cutoff),

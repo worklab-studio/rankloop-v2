@@ -73,6 +73,7 @@ const CONTEXT: PublishContext = {
   projectId: "project_1",
   articleId: "article_1",
   proposalId: "proposal_1",
+  proposalType: "write_new",
   keywordBacklogId: "kw_1",
   pageTypeId: "type_1",
   pageTypeName: "Comparisons",

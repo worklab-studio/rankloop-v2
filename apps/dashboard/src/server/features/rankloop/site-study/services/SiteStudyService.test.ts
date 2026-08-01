@@ -355,25 +355,46 @@ describe("SiteStudyService.getStudy", () => {
   });
 });
 
-describe("runScheduledSiteStudies", () => {
-  it("starts a study per due project and isolates per-project failures", async () => {
+describe("siteStudyBlock", () => {
+  const now = new Date("2026-08-01T09:00:00.000Z");
+
+  it("sweeps at most five stale projects a dispatch", async () => {
     mocks.repo.getProjectsDueForStudy.mockResolvedValue([
       { projectId: "project_1" },
       { projectId: "project_2" },
     ]);
-    // project_1 blows up (insert races a delete); project_2 must still start.
-    mocks.repo.tryCreateRun
-      .mockRejectedValueOnce(new Error("insert failed"))
-      .mockResolvedValueOnce(true);
-    mocks.workflow.create.mockResolvedValue(undefined);
-    const { runScheduledSiteStudies } = await import("./scheduledSiteStudies");
+    const { siteStudyBlock } = await import("./scheduledSiteStudies");
 
-    await runScheduledSiteStudies();
-
+    expect(await siteStudyBlock.dueProjects(now)).toEqual([
+      "project_1",
+      "project_2",
+    ]);
     expect(mocks.repo.getProjectsDueForStudy).toHaveBeenCalledWith(
       expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
       5,
+      undefined,
     );
+  });
+
+  it("asks the same question about one project when the alarm dispatches", async () => {
+    mocks.repo.getProjectsDueForStudy.mockResolvedValue([]);
+    const { siteStudyBlock } = await import("./scheduledSiteStudies");
+
+    expect(await siteStudyBlock.dueProjects(now, "project_1")).toEqual([]);
+    expect(mocks.repo.getProjectsDueForStudy).toHaveBeenCalledWith(
+      expect.stringMatching(/^\d{4}-\d{2}-\d{2}T/),
+      1,
+      "project_1",
+    );
+  });
+
+  it("starts the study for a due project", async () => {
+    mocks.repo.tryCreateRun.mockResolvedValue(true);
+    mocks.workflow.create.mockResolvedValue(undefined);
+    const { siteStudyBlock } = await import("./scheduledSiteStudies");
+
+    await siteStudyBlock.runForProject("project_1", now);
+
     expect(mocks.workflow.create).toHaveBeenCalledTimes(1);
   });
 });

@@ -224,8 +224,17 @@ export function RankloopWriterSettings({ projectId }: { projectId: string }) {
             onChange={setTrustDial}
           />
           <p className="text-xs text-base-content/55">
-            Saved now, not yet honored &mdash; today every proposal stops at the
-            brief, whichever card is selected.
+            Autopilot is earned, not switched on &mdash; an action type
+            publishes unattended only once its 90-day receipts say it works on
+            your site, and the rest fall back to Drafts.{" "}
+            <Link
+              to="/p/$projectId/settings"
+              params={{ projectId }}
+              hash="automation"
+              className="link link-primary font-medium"
+            >
+              See which types qualify in Settings →
+            </Link>
             {writerMode === "agent"
               ? " In agent mode it applies to nothing: your agent decides when to open the PR, and the laws still decide what may merge."
               : null}

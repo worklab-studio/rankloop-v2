@@ -1,3 +1,4 @@
+import { env, waitUntil } from "cloudflare:workers";
 import type {
   ArchiveProjectInput,
   CreateProjectInput,
@@ -7,6 +8,7 @@ import type {
   UpdateProjectInput,
 } from "@/types/schemas/projects";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
+import { ensureRoutinesArmed } from "@/server/features/rankloop/routines/services/routineDispatch";
 import { normalizeBacklinksTarget } from "@/server/lib/dataforseoBacklinksTarget";
 import { AppError } from "@/server/lib/errors";
 import { assertLanguageForLocation } from "@/server/lib/market";
@@ -82,7 +84,22 @@ export async function listProjectsEnsuringOne(organizationId: string) {
   }
 
   await ProjectRepository.tryCreateDefaultProject(organizationId);
-  return listProjects(organizationId);
+  const created = await listProjects(organizationId);
+  for (const project of created) armProjectRoutines(project.id);
+  return created;
+}
+
+/**
+ * Give a new project its routine alarm.
+ *
+ * waitUntil, not void: workerd cancels unregistered pending I/O once the
+ * response is sent, and a project that never got armed is a project whose
+ * routines never run on a self-host — the exact failure this whole mechanism
+ * exists to prevent. It is still only the first attempt; `ensureRoutinesArmed`
+ * on the read path is what makes a lost alarm recoverable.
+ */
+function armProjectRoutines(projectId: string) {
+  waitUntil(ensureRoutinesArmed(env, projectId));
 }
 
 /**
@@ -114,6 +131,7 @@ export async function createProject(
       normalizeProjectDomain(input.domain),
       resolveMarketInput(input),
     );
+    armProjectRoutines(row.id);
     return mapProject(row);
   } catch (error) {
     if (isReservedDefaultConflict(error, input)) {

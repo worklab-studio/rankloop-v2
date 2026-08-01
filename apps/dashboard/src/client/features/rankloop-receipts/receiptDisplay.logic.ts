@@ -16,6 +16,22 @@ export function receiptStatusDisplay(status: string): ReceiptStatusDisplay {
   return STATUS_DISPLAY.get(status) ?? { label: status, color: "slate" };
 }
 
+/**
+ * Who decided the action this receipt measures.
+ *
+ * Three states, and the third one matters: null is a receipt from before
+ * autopilot existed, where the database genuinely does not know. Labelling
+ * those "human" would be a guess printed as a fact on the one screen whose
+ * entire job is telling the truth about what the machine did — so they get no
+ * chip, and the reader is left to notice the absence rather than trust a
+ * wrong word.
+ */
+export function decidedByLabel(decidedBy: string | null): string | null {
+  if (decidedBy === "autopilot") return "autopilot";
+  if (decidedBy === "human") return "human";
+  return null;
+}
+
 /** One decimal, matching every other position in the app; null renders the
  *  em dash the table uses for not-yet-measured cells. */
 export function formatReceiptPosition(position: number | null): string {

@@ -143,18 +143,27 @@ async function computeProposals(projectId: string): Promise<ComputeResult> {
   return { created, expired };
 }
 
-/** Approve or decline — valid only from 'proposed', enforced by the CAS
- *  update itself so two racing decisions can't both win. */
+/**
+ * Approve or decline — valid only from 'proposed', enforced by the CAS update
+ * itself so two racing decisions can't both win.
+ *
+ * `decidedBy` has no default. Once autopilot can approve without a human, the
+ * one thing a receipt must never do is imply a person looked at something a
+ * machine waved through, and a defaulted parameter is how that happens: the
+ * one caller that forgets it is the one that most needed to say 'autopilot'.
+ */
 async function decideProposal(input: {
   projectId: string;
   proposalId: string;
   decision: "approved" | "declined";
+  decidedBy: "human" | "autopilot";
 }) {
   const decided = await ProposalsRepository.updateDecision({
     projectId: input.projectId,
     proposalId: input.proposalId,
     status: input.decision,
     decidedAt: new Date().toISOString(),
+    decidedBy: input.decidedBy,
   });
   if (decided) {
     // A declined net-new keyword goes back to 'planned', not 'discovered':

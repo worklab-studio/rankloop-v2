@@ -16,6 +16,7 @@
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
+    "test:ci": "vitest run --reporter=dot",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

@@ -31,6 +31,7 @@ const mocks = vi.hoisted(() => ({
   },
   receipts: { openReceipt: vi.fn() },
   resolve: { resolvePublishAdapter: vi.fn() },
+  autopilot: { getActionBehavior: vi.fn() },
 }));
 
 vi.mock("cloudflare:workers", () => ({ env: {} }));
@@ -67,6 +68,10 @@ vi.mock("@/server/features/rankloop/receipts/services/ReceiptsService", () => ({
 vi.mock("@/server/features/rankloop/publish/adapters/resolve", () => ({
   resolvePublishAdapter: mocks.resolve.resolvePublishAdapter,
 }));
+vi.mock(
+  "@/server/features/rankloop/routines/services/AutopilotService",
+  () => ({ AutopilotService: mocks.autopilot }),
+);
 
 const DRAFT = [
   "---",
@@ -85,6 +90,7 @@ function article(overrides: Record<string, unknown> = {}) {
     id: "article_1",
     projectId: "project_1",
     proposalId: "proposal_1",
+    proposalType: "write_new",
     pageTypeId: "type_1",
     keyword: "espresso tamper sizes",
     slug: "espresso-tamper-sizes",
@@ -153,7 +159,15 @@ beforeEach(() => {
   });
   mocks.proposals.getProposalById.mockResolvedValue({
     id: "proposal_1",
+    type: "write_new",
     keywordBacklogId: "kw_1",
+  });
+  // The default is the earned answer; the tests below are the ones that take
+  // it away, because "autopilot publishes" is the behavior every other test
+  // in this file assumes once the dial allows it.
+  mocks.autopilot.getActionBehavior.mockResolvedValue({
+    behavior: "autopilot",
+    fallbackReason: null,
   });
   mocks.pagePlan.getPageTypeById.mockResolvedValue({
     id: "type_1",
@@ -274,6 +288,108 @@ describe("preflight — the trust dial", () => {
     expect(mocks.publishRepo.claimForPublishing).toHaveBeenCalledWith(
       expect.objectContaining({ fromStatus: "review" }),
     );
+  });
+
+  it("asks about the action type this article's proposal actually is", async () => {
+    mocks.articles.getArticleById.mockResolvedValue(
+      article({ status: "review" }),
+    );
+    mocks.settings.getSettings.mockResolvedValue({ trustDial: "autopilot" });
+
+    await (await service()).preflight(INPUT);
+
+    expect(mocks.autopilot.getActionBehavior).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: "project_1",
+        actionType: "write_new",
+      }),
+    );
+  });
+
+  it("refuses an action type autopilot has not earned, and says the number", async () => {
+    mocks.articles.getArticleById.mockResolvedValue(
+      article({ status: "review" }),
+    );
+    mocks.settings.getSettings.mockResolvedValue({ trustDial: "autopilot" });
+    mocks.autopilot.getActionBehavior.mockResolvedValue({
+      behavior: "drafts",
+      fallbackReason: "needs 5 measured results, has 2",
+    });
+
+    const result = await (await service()).preflight(INPUT);
+
+    expect(refusal(result).reason).toBe("trust_dial");
+    expect(refusal(result).detail).toContain("needs 5 measured results, has 2");
+    // The dial alone got as far as the eligibility read and no further: no
+    // gate was paid for and no claim was taken.
+    expect(mocks.gate.gate).not.toHaveBeenCalled();
+    expect(mocks.publishRepo.claimForPublishing).not.toHaveBeenCalled();
+  });
+
+  it("refuses an action type whose results were poor, with the same shape", async () => {
+    mocks.articles.getArticleById.mockResolvedValue(
+      article({ status: "review" }),
+    );
+    mocks.settings.getSettings.mockResolvedValue({ trustDial: "autopilot" });
+    mocks.autopilot.getActionBehavior.mockResolvedValue({
+      behavior: "drafts",
+      fallbackReason:
+        "median result is -0.4 positions across 6 measured — autopilot needs an improvement",
+    });
+
+    const result = await (await service()).preflight(INPUT);
+
+    expect(refusal(result).detail).toContain("autopilot needs an improvement");
+    expect(mocks.publishRepo.claimForPublishing).not.toHaveBeenCalled();
+  });
+
+  it("never runs a merge or a prune unattended, whatever the receipts said", async () => {
+    mocks.articles.getArticleById.mockResolvedValue(
+      article({ status: "review" }),
+    );
+    mocks.settings.getSettings.mockResolvedValue({ trustDial: "autopilot" });
+    mocks.proposals.getProposalById.mockResolvedValue({
+      id: "proposal_1",
+      type: "merge",
+      keywordBacklogId: "kw_1",
+    });
+    mocks.autopilot.getActionBehavior.mockResolvedValue({
+      behavior: "drafts",
+      fallbackReason:
+        "never unattended — this action removes a page that exists",
+    });
+
+    const result = await (await service()).preflight(INPUT);
+
+    expect(refusal(result).detail).toContain("never unattended");
+    expect(mocks.publishRepo.claimForPublishing).not.toHaveBeenCalled();
+  });
+
+  it("holds every type while the kill switch is tripped", async () => {
+    mocks.articles.getArticleById.mockResolvedValue(
+      article({ status: "review" }),
+    );
+    mocks.settings.getSettings.mockResolvedValue({ trustDial: "autopilot" });
+    mocks.autopilot.getActionBehavior.mockResolvedValue({
+      behavior: "drafts",
+      fallbackReason: "autopilot paused — 3 drafts in a row failed the gate",
+    });
+
+    const result = await (await service()).preflight(INPUT);
+
+    expect(refusal(result).detail).toContain(
+      "3 drafts in a row failed the gate",
+    );
+    expect(mocks.publishRepo.claimForPublishing).not.toHaveBeenCalled();
+  });
+
+  it("leaves an approved draft alone — a human already said yes", async () => {
+    mocks.settings.getSettings.mockResolvedValue({ trustDial: "autopilot" });
+
+    const result = await (await service()).preflight(INPUT);
+
+    expect(result.ok).toBe(true);
+    expect(mocks.autopilot.getActionBehavior).not.toHaveBeenCalled();
   });
 
   it("claims from the exact status it judged", async () => {

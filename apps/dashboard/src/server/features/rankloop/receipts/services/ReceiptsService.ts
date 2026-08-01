@@ -195,9 +195,15 @@ async function measureReceipt(
  * pass is capped at 50 rows across all projects, so a receipt that returns
  * unchanged tick after tick is not merely wasted work — enough of them and no
  * project on the instance ever measures a receipt again.
+ *
+ * `projectId` narrows the same pass to one project's receipts, which is how
+ * the per-project dispatcher (the DO alarm) runs the identical step-decisions
+ * the sweep runs — the cap then bounds one project's backlog rather than the
+ * instance's.
  */
 async function runMeasurementPass(
   now: () => Date = () => new Date(),
+  projectId?: string,
 ): Promise<MeasurementPassResult> {
   const result: MeasurementPassResult = {
     flipped: 0,
@@ -210,11 +216,15 @@ async function runMeasurementPass(
   const due = await ReceiptsRepository.getDueReceipts(
     today,
     MAX_DUE_RECEIPTS_PER_PASS,
+    projectId,
   );
   // Receipts stuck behind a lagging (or frozen) sync are no longer returned
   // above, so the number is read rather than tallied from the rows — the
   // observability survives, the slot-hogging does not.
-  result.lagged = await ReceiptsRepository.countReceiptsWaitingOnData(today);
+  result.lagged = await ReceiptsRepository.countReceiptsWaitingOnData(
+    today,
+    projectId,
+  );
   if (due.length === 0) return result;
   const tomorrow = shiftDate(today, 1);
 
@@ -289,8 +299,11 @@ async function getReceipts(
   projectId: string,
 ): Promise<RankloopReceiptListItem[]> {
   const rows = await ReceiptsRepository.getReceiptsForProject(projectId);
-  return rows.map(({ receipt, pagePath }) => ({
+  return rows.map(({ receipt, pagePath, decidedBy }) => ({
     ...receipt,
+    // Null when no proposal stands behind this receipt — the chip shows
+    // nothing rather than claiming a provenance nobody recorded.
+    decidedBy,
     // The page's live path when the manifest still has it; the pinned query
     // when it doesn't — a receipt outlives the page it measured.
     target: pagePath ?? receipt.targetQuery ?? "",

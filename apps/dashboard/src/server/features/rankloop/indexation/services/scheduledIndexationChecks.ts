@@ -1,3 +1,4 @@
+import type { RoutineBlock } from "@/server/features/rankloop/routines/routineBlock";
 import { IndexationRepository } from "@/server/features/rankloop/indexation/repositories/IndexationRepository";
 import { IndexationService } from "@/server/features/rankloop/indexation/services/IndexationService";
 
@@ -7,37 +8,35 @@ import { IndexationService } from "@/server/features/rankloop/indexation/service
 const MAX_PROJECTS_PER_TICK = 10;
 
 /**
- * Cron body for the `scheduled` Worker handler: ask Google whether it indexed
- * what we published. Runs after the receipts block — both read the same
- * published corpus, and receipts is the one with a deadline (a measurement
- * window that closes). Wrapped in `withPgClient` at the entrypoint
- * (server.ts).
- *
- * Daily work riding the 15-minute cron, like receipts: the per-project budget
- * and the 7-day recheck window mean almost every tick finds nothing due and
- * costs two indexed reads, which is cheaper than a second scheduler.
+ * Every connected project is a candidate; the per-project budget and the
+ * 7-day recheck window inside `runIndexationChecks` are what make almost
+ * every dispatch find nothing to ask about and cost two indexed reads —
+ * cheaper than a second scheduler.
  */
-export async function runScheduledIndexationChecks() {
+async function dueProjects(_now: Date, projectId?: string) {
   const due = await IndexationRepository.getProjectsDueForIndexation(
-    MAX_PROJECTS_PER_TICK,
+    projectId ? 1 : MAX_PROJECTS_PER_TICK,
+    projectId,
   );
-
-  for (const { projectId } of due) {
-    try {
-      const result = await IndexationService.runIndexationChecks(projectId);
-      // Quiet ticks stay quiet — the reason only earns a line when a URL was
-      // actually refused, not when there was simply nothing to ask about.
-      if (result.checked > 0 || result.failed > 0) {
-        console.log(
-          `[cron] Indexation checks for ${projectId}: ${result.checked} checked, ` +
-            `${result.indexed} indexed, ${result.failed} failed`,
-        );
-      }
-    } catch (err) {
-      console.error(
-        `[cron] Error running indexation checks for project ${projectId}:`,
-        err,
-      );
-    }
-  }
+  return due.map((row) => row.projectId);
 }
+
+async function runForProject(projectId: string) {
+  const result = await IndexationService.runIndexationChecks(projectId);
+  // Quiet dispatches stay quiet — the reason only earns a line when a URL was
+  // actually refused, not when there was simply nothing to ask about.
+  if (result.checked === 0 && result.failed === 0) return;
+  console.log(
+    `[routines] Indexation checks for ${projectId}: ${result.checked} checked, ` +
+      `${result.indexed} indexed, ${result.failed} failed`,
+  );
+}
+
+/** Ask Google whether it indexed what we published. Ordered after receipts —
+ *  both read the same published corpus, and receipts is the one with a
+ *  deadline (a measurement window that closes). */
+export const indexationBlock: RoutineBlock = {
+  name: "indexation",
+  dueProjects,
+  runForProject,
+};

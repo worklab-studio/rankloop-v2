@@ -177,7 +177,13 @@ async function getSeedKeywords(
  * there is nothing to admit candidates against and a scheduled run would only
  * produce rejections.
  */
-async function getProjectsDueForFreeSources(cutoff: string, limit: number) {
+// `projectId` narrows the same predicate to one project — see the note on
+// GscSyncRepository.getProjectsDueForSync: one due-rule, two dispatchers.
+async function getProjectsDueForFreeSources(
+  cutoff: string,
+  limit: number,
+  projectId?: string,
+) {
   const activeRuns = db
     .select({ projectId: keywordUniverseRuns.projectId })
     .from(keywordUniverseRuns)
@@ -219,6 +225,7 @@ async function getProjectsDueForFreeSources(cutoff: string, limit: number) {
       .where(
         and(
           isNull(projects.archivedAt),
+          projectId ? eq(projects.id, projectId) : undefined,
           notInArray(projects.id, activeRuns),
           or(
             isNull(lastFinished.lastFinishedAt),

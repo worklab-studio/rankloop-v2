@@ -430,27 +430,34 @@ describe("GscSyncService.startSync", () => {
   });
 });
 
-describe("runScheduledGscSyncs", () => {
-  it("starts a sync per due project and isolates per-project failures", async () => {
+describe("gscSyncBlock", () => {
+  const now = new Date("2026-08-01T09:00:00.000Z");
+
+  it("asks one due-rule two ways: ten projects for the sweep, one for the alarm", async () => {
     mocks.repo.getProjectsDueForSync.mockResolvedValue([
       { projectId: "project_1" },
-      { projectId: "project_2" },
     ]);
-    // project_1 blows up (revoked grant); project_2 must still start.
-    mocks.connectionRepo.getByProjectId
-      .mockRejectedValueOnce(new Error("grant revoked"))
-      .mockResolvedValueOnce(connection);
+    const { gscSyncBlock } = await import("./scheduledGscSyncs");
+
+    expect(await gscSyncBlock.dueProjects(now)).toEqual(["project_1"]);
+    expect(await gscSyncBlock.dueProjects(now, "project_1")).toEqual([
+      "project_1",
+    ]);
+    expect(mocks.repo.getProjectsDueForSync.mock.calls).toEqual([
+      [expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), 10, undefined],
+      [expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/), 1, "project_1"],
+    ]);
+  });
+
+  it("starts the sync for a due project", async () => {
+    mocks.connectionRepo.getByProjectId.mockResolvedValue(connection);
     mocks.repo.getLatestStoredDate.mockResolvedValue("2026-07-28");
     mocks.repo.tryCreateRun.mockResolvedValue(true);
     mocks.workflow.create.mockResolvedValue(undefined);
-    const { runScheduledGscSyncs } = await import("./scheduledGscSyncs");
+    const { gscSyncBlock } = await import("./scheduledGscSyncs");
 
-    await runScheduledGscSyncs();
+    await gscSyncBlock.runForProject("project_1", now);
 
-    expect(mocks.repo.getProjectsDueForSync).toHaveBeenCalledWith(
-      expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/),
-      10,
-    );
     expect(mocks.workflow.create).toHaveBeenCalledTimes(1);
   });
 });

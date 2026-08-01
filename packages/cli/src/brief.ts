@@ -25,6 +25,15 @@ export interface BriefOptions {
   today?: string | undefined;
 }
 
+/** UTC, deliberately, and not the machine's local day.
+ *
+ * The date this returns is printed as the post's publish date and read back by
+ * the laws (`parseIsoDate` is UTC), by the quota's day arithmetic and by the
+ * dashboard, which stamps its own briefs in UTC too. A local-time day would
+ * put a writer in Auckland a day ahead of the same brief rendered on the
+ * server, and a writer in Los Angeles a day behind it, for the same run. One
+ * clock for everyone is worth more than matching the wall in the room.
+ * `toISOString` is the UTC one; the test pins that with a shifted TZ. */
 function isoToday(): string {
   return new Date().toISOString().slice(0, 10);
 }

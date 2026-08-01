@@ -22,8 +22,8 @@ async function getSettings(projectId: string) {
 /** Every project with the quota switched on. Small by construction — one row
  *  per project that has saved settings — so the daily block reads it whole
  *  and does its due-set arithmetic in memory. */
-async function getAllSettings() {
-  return db
+async function getAllSettings(projectId?: string) {
+  const rows = db
     .select({
       projectId: writerSettings.projectId,
       postsPerDay: writerSettings.postsPerDay,
@@ -31,6 +31,9 @@ async function getAllSettings() {
       quotaStartDate: writerSettings.quotaStartDate,
     })
     .from(writerSettings);
+  // `projectId` narrows the same read to one project — the per-project
+  // dispatcher does the identical arithmetic the sweep does, over one row.
+  return projectId ? rows.where(eq(writerSettings.projectId, projectId)) : rows;
 }
 
 /**

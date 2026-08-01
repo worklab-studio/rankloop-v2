@@ -3,7 +3,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({
   repo: {
     getProjectsDueForIndexation:
-      vi.fn<(limit: number) => Promise<Array<{ projectId: string }>>>(),
+      vi.fn<
+        (
+          limit: number,
+          projectId?: string,
+        ) => Promise<Array<{ projectId: string }>>
+      >(),
   },
   service: {
     runIndexationChecks: vi.fn(),
@@ -32,36 +37,28 @@ beforeEach(() => {
   });
 });
 
-describe("runScheduledIndexationChecks", () => {
-  it("takes at most ten projects a tick", async () => {
-    const { runScheduledIndexationChecks } =
-      await import("./scheduledIndexationChecks");
+const now = new Date("2026-08-01T09:00:00.000Z");
 
-    await runScheduledIndexationChecks();
+describe("indexationBlock", () => {
+  it("takes at most ten projects a sweep", async () => {
+    const { indexationBlock } = await import("./scheduledIndexationChecks");
 
-    expect(mocks.repo.getProjectsDueForIndexation).toHaveBeenCalledWith(10);
+    await indexationBlock.dueProjects(now);
+
+    expect(mocks.repo.getProjectsDueForIndexation).toHaveBeenCalledWith(
+      10,
+      undefined,
+    );
   });
 
-  it("isolates a failing project so the rest of the tick still runs", async () => {
-    mocks.repo.getProjectsDueForIndexation.mockResolvedValue([
-      { projectId: "project_1" },
-      { projectId: "project_2" },
-    ]);
-    mocks.service.runIndexationChecks
-      .mockRejectedValueOnce(new Error("Search Console token expired"))
-      .mockResolvedValueOnce({
-        checked: 4,
-        indexed: 4,
-        failed: 0,
-        reason: null,
-      });
-    const errors = vi.spyOn(console, "error").mockImplementation(() => {});
-    const { runScheduledIndexationChecks } =
-      await import("./scheduledIndexationChecks");
+  it("asks the same question about one project when the alarm dispatches", async () => {
+    const { indexationBlock } = await import("./scheduledIndexationChecks");
 
-    await runScheduledIndexationChecks();
+    await indexationBlock.dueProjects(now, "project_1");
 
-    expect(mocks.service.runIndexationChecks).toHaveBeenCalledTimes(2);
-    expect(errors).toHaveBeenCalledOnce();
+    expect(mocks.repo.getProjectsDueForIndexation).toHaveBeenCalledWith(
+      1,
+      "project_1",
+    );
   });
 });

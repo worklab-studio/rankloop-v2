@@ -7,6 +7,7 @@ import type { PublishCapabilities } from "@/server/features/rankloop/publish/ada
 import { PublishRepository } from "@/server/features/rankloop/publish/repositories/PublishRepository";
 import { PublishLinksService } from "@/server/features/rankloop/publish/services/PublishLinksService";
 import { PublishService } from "@/server/features/rankloop/publish/services/PublishService";
+import { AutopilotService } from "@/server/features/rankloop/routines/services/AutopilotService";
 import { PagePlanRepository } from "@/server/features/rankloop/page-plan/repositories/PagePlanRepository";
 import { ArticleRepository } from "@/server/features/rankloop/writing/repositories/ArticleRepository";
 import { WriterSettingsRepository } from "@/server/features/rankloop/writing/repositories/WriterSettingsRepository";
@@ -75,11 +76,18 @@ function blockedReasonFor(input: {
   content: string | null;
   lawReportJson: string | null;
   trustDial: TrustDial;
+  /** Why autopilot will not take this action unattended today, or null when
+   *  it will. Read from the same `getActionBehavior` preflight consults, so
+   *  the panel cannot promise a button that preflight would refuse. */
+  autopilotFallbackReason: string | null;
 }): string | null {
   if (input.status === "publishing") return null;
   if (input.status !== "approved") {
     if (!(input.status === "review" && input.trustDial === "autopilot")) {
       return "Approve this draft before publishing it.";
+    }
+    if (input.autopilotFallbackReason) {
+      return `Autopilot has not earned this action yet — ${input.autopilotFallbackReason}. Approve this draft to publish it.`;
     }
   }
   if (!input.content) return "This article has no stored draft to publish.";
@@ -143,6 +151,21 @@ async function getPublishPlan(input: { projectId: string; articleId: string }) {
     ? await PublishLinksService.planLinks(context)
     : [];
 
+  const trustDial = settings?.trustDial ?? WRITER_SETTINGS_DEFAULTS.trustDial;
+  // Only asked on the one path where the answer can change the sentence: a
+  // draft sitting in review under an autopilot dial. Every other combination
+  // is already decided by the status, and eligibility costs four reads.
+  const autopilotFallbackReason =
+    article.status === "review" && trustDial === "autopilot"
+      ? (
+          await AutopilotService.getActionBehavior({
+            projectId: input.projectId,
+            actionType: context.proposalType,
+            now: new Date(),
+          })
+        ).fallbackReason
+      : null;
+
   return {
     action: actionFor(resolved.adapter.capabilities, resolved.settings),
     target: resolved.adapter.capabilities.label,
@@ -156,7 +179,8 @@ async function getPublishPlan(input: { projectId: string; articleId: string }) {
       status: article.status,
       content: article.content,
       lawReportJson: article.lawReportJson,
-      trustDial: settings?.trustDial ?? WRITER_SETTINGS_DEFAULTS.trustDial,
+      trustDial,
+      autopilotFallbackReason,
     }),
     published: null,
   };

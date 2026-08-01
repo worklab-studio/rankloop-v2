@@ -24,6 +24,9 @@ export const decideRankloopProposal = createServerFn({ method: "POST" })
       projectId: context.projectId,
       proposalId: data.proposalId,
       decision: data.decision,
+      // A signed-in person clicked the button. The only other value comes
+      // from the routine, which never arrives through a server function.
+      decidedBy: "human",
     });
     waitUntil(
       captureServerEvent({

@@ -16,6 +16,7 @@ import type { Detection } from "./detect.ts";
 import type { Io } from "./io.ts";
 import { postTemplate, rankloopJson, workflow, writerPrompt } from "./templates.ts";
 import type { ScaffoldInput } from "./templates.ts";
+import { VERSION } from "./version.ts";
 
 /** Asks one question and resolves with the answer, "" for an empty line. */
 export type Ask = (question: string) => Promise<string>;
@@ -123,7 +124,21 @@ export async function runInit(options: InitOptions, io: Io): Promise<number> {
   io.out("");
   io.out(`next: set site.url and the taxonomy in ${CONFIG_NAME}, write the voice block in`);
   io.out("      rankloop/writer-prompt.md, then `rankloop check` to see where the");
-  io.out("      corpus stands. The workflow makes the laws a merge gate on every PR.");
+  io.out("      corpus stands.");
+  io.out("");
+  // The framework, the content directory and the mode are all read off the
+  // repo; blogPath is the one value with nothing on disk to confirm it, and it
+  // is load-bearing — every internal link a brief hands a writer is built from
+  // it, so a wrong prefix means a post full of URLs that 404.
+  io.out(`verify: site.blogPath reads "${input.detection.blogPath}" — the one value in the config`);
+  io.out("      nothing on disk could confirm, and every internal link a brief hands");
+  io.out("      a writer is built from it.");
+  io.out("");
+  // Handing someone a workflow that fails on their first PR is worse than
+  // handing them none, so say plainly what it does and does not do today.
+  io.out(`heads up: rankloop ${VERSION} is not published to npm yet, so the scaffolded`);
+  io.out("      workflow ships with its check step commented out rather than red on");
+  io.out("      every PR. Run `rankloop check` locally until it ships.");
   return 0;
 }
 

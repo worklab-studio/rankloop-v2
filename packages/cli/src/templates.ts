@@ -4,8 +4,9 @@
  * machine-read config. writer-prompt.md and post-template.md are read by
  * whatever writes the posts — an agent, or a person — and they live in the
  * repo rather than in a dashboard because the voice and the structure belong
- * next to the code that renders them. The workflow makes the laws a merge
- * gate, which is the only place a quality bar actually holds.
+ * next to the code that renders them. The workflow is where the laws become a
+ * merge gate, which is the only place a quality bar actually holds — see
+ * `workflow()` for why it is scaffolded switched off.
  *
  * The law values in the scaffolded config are generated from the engine's own
  * `defaultLaws()`, so the file a user reads can never drift from the
@@ -212,13 +213,27 @@ Run \`rankloop check\`. It prints every law it broke, with the file and line.
 
 /** The version is pinned, not floated. A gate that can change its mind
  * between two runs of the same commit is not a gate; upgrading is a one-line
- * diff a reviewer can see. */
+ * diff a reviewer can see.
+ *
+ * The gate ships INACTIVE, and that is the honest state of things: `rankloop`
+ * is not on npm yet, so an enabled `npx rankloop@<version>` would fail on the
+ * very first pull request of a repo somebody just scaffolded. A gate that is
+ * red before anyone wrote a post is one people learn to click past, which
+ * costs more than the week of not having it. So the job runs, says out loud
+ * that it is not judging anything, and leaves the real step one uncomment
+ * away. `init`'s next-steps output says the same thing on the terminal. */
 export function workflow(input: ScaffoldInput): string {
   return `name: rankloop check
 
 # The publish laws as a merge gate. This job needs no API key, no rankloop
 # account and no network: the engine is MIT and runs offline. Whichever writer
 # produced the post, nothing merges that breaks the laws.
+#
+# NOT ENABLED YET: rankloop ${VERSION} is not published to npm, so the check
+# step below is commented out rather than failing every pull request. Run
+# \`rankloop check\` locally in the meantime — same binary, same laws, same exit
+# code. When the package ships, delete the notice step and uncomment the run
+# under it; that is the whole change.
 
 on:
   pull_request:
@@ -237,8 +252,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
+      - name: laws not enforced yet
+        run: |
+          echo "::notice::rankloop ${VERSION} is not on npm yet, so the publish laws are NOT gating this pull request. Run 'rankloop check' locally, and uncomment the step in .github/workflows/rankloop-check.yml once the package ships."
       # --format=github turns each violation into an annotation, so a failure
       # lands on the offending line of the diff instead of in the log tail.
-      - run: npx rankloop@${VERSION} check --format=github
+      # - run: npx rankloop@${VERSION} check --format=github
 `;
 }

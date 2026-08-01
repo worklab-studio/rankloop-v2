@@ -1,3 +1,4 @@
+import type { RoutineBlock } from "@/server/features/rankloop/routines/routineBlock";
 import { SiteStudyRepository } from "@/server/features/rankloop/site-study/repositories/SiteStudyRepository";
 import { SiteStudyService } from "@/server/features/rankloop/site-study/services/SiteStudyService";
 
@@ -11,38 +12,39 @@ const MAX_STUDY_STARTS_PER_TICK = 5;
 // from.
 const STUDY_STALE_AFTER_DAYS = 7;
 
-// Cron body for the `scheduled` Worker handler: re-study every project whose
-// latest done study is older than a week. Wrapped in `withPgClient` at the
-// entrypoint (server.ts). First studies are never started here — they belong
-// to the user's explicit "Study my site".
-export async function runScheduledSiteStudies() {
+// First studies are never due here — they belong to the user's explicit
+// "Study my site". This only re-studies a project whose latest done study has
+// gone stale.
+async function dueProjects(now: Date, projectId?: string) {
   const cutoff = new Date(
-    Date.now() - STUDY_STALE_AFTER_DAYS * 24 * 60 * 60 * 1000,
+    now.getTime() - STUDY_STALE_AFTER_DAYS * 24 * 60 * 60 * 1000,
   ).toISOString();
   const due = await SiteStudyRepository.getProjectsDueForStudy(
     cutoff,
-    MAX_STUDY_STARTS_PER_TICK,
+    projectId ? 1 : MAX_STUDY_STARTS_PER_TICK,
+    projectId,
   );
-
-  for (const { projectId } of due) {
-    try {
-      const result = await SiteStudyService.startStudy(projectId);
-      if (result.alreadyRunning) {
-        // The due-query excludes active runs, so this only happens when a
-        // manual start raced this tick — the partial unique settled it.
-        console.log(
-          `[cron] Skipping site study for project ${projectId} — run already active`,
-        );
-      } else {
-        console.log(
-          `[cron] Started site study ${result.runId} for project ${projectId}`,
-        );
-      }
-    } catch (err) {
-      console.error(
-        `[cron] Error starting site study for project ${projectId}:`,
-        err,
-      );
-    }
-  }
+  return due.map((row) => row.projectId);
 }
+
+async function runForProject(projectId: string) {
+  const result = await SiteStudyService.startStudy(projectId);
+  if (result.alreadyRunning) {
+    // The due-query excludes active runs, so this only happens when a manual
+    // start raced this dispatch — the partial unique settled it.
+    console.log(
+      `[routines] Skipping site study for project ${projectId} — run already active`,
+    );
+    return;
+  }
+  console.log(
+    `[routines] Started site study ${result.runId} for project ${projectId}`,
+  );
+}
+
+/** Re-read the site so the inventory the writer selects from is this week's. */
+export const siteStudyBlock: RoutineBlock = {
+  name: "site-study",
+  dueProjects,
+  runForProject,
+};

@@ -2,7 +2,7 @@
 
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { main } from "../src/cli.ts";
 import { bufferIo } from "../src/io.ts";
 import { VERSION } from "../src/version.ts";
@@ -78,5 +78,30 @@ describe("rankloop brief", () => {
     const io = bufferIo();
     expect(await main(["brief", "--dir", site.root], io)).toBe(1);
     expect(io.errors.join("\n")).toContain("usage: rankloop brief");
+  });
+
+  // The publish date the brief prints is read back by the laws, by the quota's
+  // day arithmetic and by the dashboard, all of which count days in UTC. A
+  // machine fourteen hours ahead of Greenwich is where a local-time day shows
+  // up: 13:30 on the 2nd there is still the 1st in UTC, so a brief written off
+  // the local clock would date the post a day the rest of the system disagrees
+  // with. Kiritimati is the widest offset there is, which makes it the cheapest
+  // place to catch the regression.
+  it("dates the brief in UTC, not on the clock in the room", async () => {
+    const site = cleanSite();
+    const originalTz = process.env.TZ;
+    process.env.TZ = "Pacific/Kiritimati";
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-08-01T23:30:00Z"));
+    try {
+      const io = bufferIo();
+      expect(await main(["brief", "espresso grinder", "--dir", site.root], io)).toBe(0);
+      expect(io.text).toContain("Today's date is 2026-08-01");
+      expect(io.text).toContain("- Publish date: 2026-08-01");
+    } finally {
+      vi.useRealTimers();
+      if (originalTz === undefined) delete process.env.TZ;
+      else process.env.TZ = originalTz;
+    }
   });
 });

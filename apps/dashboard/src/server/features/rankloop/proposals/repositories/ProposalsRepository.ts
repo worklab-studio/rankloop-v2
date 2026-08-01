@@ -208,13 +208,18 @@ async function updateDecision(input: {
   proposalId: string;
   status: "approved" | "declined";
   decidedAt: string;
+  decidedBy: "human" | "autopilot";
 }): Promise<Pick<
   RankloopProposal,
-  "id" | "type" | "track" | "target" | "keywordBacklogId"
+  "id" | "type" | "track" | "target" | "keywordBacklogId" | "decidedBy"
 > | null> {
   const rows = await db
     .update(proposals)
-    .set({ status: input.status, decidedAt: input.decidedAt })
+    .set({
+      status: input.status,
+      decidedAt: input.decidedAt,
+      decidedBy: input.decidedBy,
+    })
     .where(
       and(
         eq(proposals.id, input.proposalId),
@@ -232,6 +237,10 @@ async function updateDecision(input: {
       track: proposals.track,
       target: proposals.target,
       keywordBacklogId: proposals.keywordBacklogId,
+      // Echoed back rather than assumed by the caller: the receipts view
+      // separates machine decisions from human ones, and it should read that
+      // distinction off the row that was actually written.
+      decidedBy: proposals.decidedBy,
     });
   return rows[0] ?? null;
 }

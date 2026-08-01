@@ -232,7 +232,9 @@ async function insertChecks(rows: IndexationCheckInsert[]): Promise<void> {
  * projects coalesce to the empty string so they sort first on both dialects —
  * bare `asc()` on a NULL puts them first on SQLite and last on Postgres.
  */
-async function getProjectsDueForIndexation(limit: number) {
+// `projectId` narrows the same predicate to one project — see the note on
+// GscSyncRepository.getProjectsDueForSync: one due-rule, two dispatchers.
+async function getProjectsDueForIndexation(limit: number, projectId?: string) {
   const lastChecked = db
     .select({
       projectId: indexationChecks.projectId,
@@ -247,7 +249,12 @@ async function getProjectsDueForIndexation(limit: number) {
     .from(gscConnections)
     .innerJoin(projects, eq(gscConnections.projectId, projects.id))
     .leftJoin(lastChecked, eq(lastChecked.projectId, gscConnections.projectId))
-    .where(isNull(projects.archivedAt))
+    .where(
+      and(
+        isNull(projects.archivedAt),
+        projectId ? eq(gscConnections.projectId, projectId) : undefined,
+      ),
+    )
     .orderBy(asc(sql`coalesce(${lastChecked.lastCheckedAt}, '')`))
     .limit(limit);
 }

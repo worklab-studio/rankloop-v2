@@ -12,7 +12,7 @@ import { projects } from "./app.schema";
 // ============================================================================
 // rankloop Write side — decisions out (competitors, backlog, page plan,
 // proposals, articles, receipts, spend, GSC sync runs, site study runs,
-// competitor study runs, writer settings)
+// competitor study runs, writer settings, daily digests)
 // ============================================================================
 
 // The keyword backlog. searchVolume/keywordDifficulty are nullable by
@@ -191,6 +191,12 @@ export const proposals = sqliteTable(
       .default(sql`(current_timestamp)`),
     expiresAt: text("expires_at"),
     decidedAt: text("decided_at"),
+    // Who said yes. Null on undecided rows and on every proposal decided
+    // before autopilot existed — backfilling those to 'human' would be a
+    // guess, and the receipts view would then claim a provenance nobody
+    // recorded. Once autopilot can publish unattended, "a machine did this"
+    // has to be a fact on the row, not an inference from timestamps.
+    decidedBy: text("decided_by", { enum: ["human", "autopilot"] }),
     executedAt: text("executed_at"),
   },
   (table) => [
@@ -318,6 +324,46 @@ export const receipts = sqliteTable(
   },
   (table) => [
     index("receipts_project_status_idx").on(table.projectId, table.status),
+  ],
+);
+
+// The one thing a solo operator reads each morning: what needs a decision,
+// what shipped, what the receipts finally said, and what is stuck. One row per
+// project per day, written after the morning routine.
+//
+// There is no row for a quiet day. An empty digest is not an empty page — it
+// is a claim that nothing happened, and a card that appears every morning
+// regardless of content trains people to stop reading it. Silence is the
+// signal, so the absence of a row is the absence of news.
+export const digests = sqliteTable(
+  "digests",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    // YYYY-MM-DD, the day being reported on.
+    forDate: text("for_date").notNull(),
+    // The assembled sections (see digest.logic.ts). Stored rather than
+    // recomputed: it is a record of what the operator was told that morning,
+    // and re-deriving it a week later from mutable rows would quietly rewrite
+    // history — the proposal it listed may since have been decided.
+    payloadJson: text("payload_json").notNull(),
+    // [{ channel, status, at, error }] — null until a delivery is attempted,
+    // which for the in-app card is never.
+    deliveredJson: text("delivered_json"),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    // One digest per project per day: the morning routine is idempotent under
+    // a retry (and under both dispatchers firing on the same clock) because a
+    // second INSERT fails this unique rather than duplicating the card.
+    uniqueIndex("digests_project_for_date_idx").on(
+      table.projectId,
+      table.forDate,
+    ),
   ],
 );
 

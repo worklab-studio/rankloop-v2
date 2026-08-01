@@ -7,13 +7,7 @@ import { resolveUserContextFromHeaders } from "@/middleware/ensure-user/resolve"
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
 import { SamSessionRepository } from "@/server/features/sam/SamSessionRepository";
 import { runScheduledRankChecks } from "@/server/features/rank-tracking/services/scheduledRankChecks";
-import { runScheduledGscSyncs } from "@/server/features/rankloop/gsc-sync/services/scheduledGscSyncs";
-import { runScheduledSiteStudies } from "@/server/features/rankloop/site-study/services/scheduledSiteStudies";
-import { runScheduledReceiptMeasurements } from "@/server/features/rankloop/receipts/services/scheduledReceiptMeasurements";
-import { runScheduledIndexationChecks } from "@/server/features/rankloop/indexation/services/scheduledIndexationChecks";
-import { runScheduledCompetitorStudies } from "@/server/features/rankloop/competitors/services/scheduledCompetitorStudies";
-import { runScheduledKeywordUniverse } from "@/server/features/rankloop/universe/services/scheduledKeywordUniverse";
-import { runScheduledNetNewProposals } from "@/server/features/rankloop/writing/services/scheduledNetNewProposals";
+import { runDueProjectRoutines } from "@/server/features/rankloop/routines/services/runProjectRoutines";
 import { getOrCreateOrganizationCustomer } from "@/server/billing/subscription";
 import { isHostedServerAuthMode } from "@/server/lib/runtime-env";
 import { getAuthMode, isHostedAuthMode } from "@/lib/auth-mode";
@@ -191,6 +185,10 @@ export { PublishWorkflow } from "./server/workflows/PublishWorkflow";
 export { OnboardingChatAgent } from "./server/features/onboarding/OnboardingChatAgent";
 // Durable Object class for the SAM in-app agent (Agents SDK).
 export { SamChatAgent } from "./server/features/sam/SamChatAgent";
+// Durable Object holding each project's routine alarm (Agents SDK). The only
+// dispatcher that works in local dev and Docker self-host, where the cron
+// trigger below never fires.
+export { RoutineSchedulerAgent } from "./server/features/rankloop/routines/RoutineSchedulerAgent";
 
 export default {
   fetch,
@@ -202,13 +200,10 @@ export default {
     // Scope a per-request Postgres client for the cron run (no-op in D1 mode).
     await withPgClient(async () => {
       await runScheduledRankChecks(env);
-      await runScheduledGscSyncs();
-      await runScheduledSiteStudies();
-      await runScheduledReceiptMeasurements();
-      await runScheduledIndexationChecks();
-      await runScheduledCompetitorStudies();
-      await runScheduledKeywordUniverse();
-      await runScheduledNetNewProposals();
+      // Every rankloop routine, for every project any block owes work to.
+      // The same `runProjectRoutines` each project's Durable Object alarm
+      // calls — this handler chooses when, never what.
+      await runDueProjectRoutines(env, new Date());
     });
   },
 };

@@ -18,6 +18,9 @@ export type PublishContext = {
   projectId: string;
   articleId: string;
   proposalId: string;
+  /** The proposal's action type. Carried so the surfaces that have to say
+   *  what autopilot has earned can name the action without a second read. */
+  proposalType: string;
   keywordBacklogId: string | null;
   pageTypeId: string | null;
   pageTypeName: string;
@@ -68,6 +71,7 @@ export async function buildContext(input: {
     projectId: article.projectId,
     articleId: article.id,
     proposalId: article.proposalId,
+    proposalType: proposal.type,
     keywordBacklogId: proposal.keywordBacklogId,
     pageTypeId: article.pageTypeId,
     pageTypeName: pageType?.name ?? "Blog",

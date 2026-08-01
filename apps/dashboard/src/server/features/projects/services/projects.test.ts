@@ -1,5 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+// createProject arms the new project's routine scheduler through
+// `cloudflare:workers`, which does not resolve outside workerd.
+vi.mock("cloudflare:workers", () => ({
+  env: {},
+  waitUntil: (promise: Promise<unknown>) => void promise.catch(() => {}),
+}));
+
 const mocks = vi.hoisted(() => ({
   createProject: vi.fn(),
   updateProject: vi.fn(),

@@ -144,6 +144,7 @@ export const {
   articles,
   writerSettings,
   receipts,
+  digests,
   llmSpend,
   gscSyncRuns,
   siteStudyRuns,

@@ -64,6 +64,31 @@ describe("runInit()", () => {
     expect(workflow).toContain(`npx rankloop@${VERSION} check --format=github`);
   });
 
+  // A gate that fails on the first pull request of a fresh repo is a gate
+  // people learn to click past, so the step stays commented until the package
+  // is installable — and the job says so rather than passing quietly.
+  it("ships the gate switched off while the package is unpublished, and says so", async () => {
+    const root = scratch();
+    const io = bufferIo();
+    await runInit({ dir: root, yes: true }, io);
+
+    const workflow = readFileSync(join(root, ".github/workflows/rankloop-check.yml"), "utf8");
+    expect(workflow).toContain(`# - run: npx rankloop@${VERSION} check --format=github`);
+    expect(workflow).toContain("laws not enforced yet");
+    expect(workflow).toContain("::notice::");
+    expect(io.text).toContain(`rankloop ${VERSION} is not published to npm yet`);
+  });
+
+  // blogPath is the only value in the config that nothing on disk can confirm,
+  // and every internal link a brief hands a writer is built from it.
+  it("names blogPath as the guess worth checking, with the value it guessed", async () => {
+    const root = scratch("hugo-site");
+    const io = bufferIo();
+    await runInit({ dir: root, yes: true }, io);
+
+    expect(io.text).toContain('verify: site.blogPath reads "posts"');
+  });
+
   it("reports nothing to do on a second run and leaves edits alone", async () => {
     const root = scratch("next-app");
     await runInit({ dir: root, yes: true }, bufferIo());

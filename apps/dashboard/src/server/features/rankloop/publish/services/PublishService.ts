@@ -15,13 +15,13 @@ import {
 import { PublishRepository } from "@/server/features/rankloop/publish/repositories/PublishRepository";
 import { PagePlanRepository } from "@/server/features/rankloop/page-plan/repositories/PagePlanRepository";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
+import { resolvePublishClaim } from "@/server/features/rankloop/publish/services/unattendedPublish";
 import { ReceiptsService } from "@/server/features/rankloop/receipts/services/ReceiptsService";
 import { ArticleGateService } from "@/server/features/rankloop/writing/services/ArticleGateService";
 import { ArticleRepository } from "@/server/features/rankloop/writing/repositories/ArticleRepository";
 import { WriterSettingsRepository } from "@/server/features/rankloop/writing/repositories/WriterSettingsRepository";
 import { AppError } from "@/server/lib/errors";
 import { WRITER_SETTINGS_DEFAULTS } from "@/shared/rankloop-writing";
-import type { TrustDial } from "@/shared/rankloop-writer";
 import { parseLawReport } from "@/types/schemas/rankloopWriter";
 import type { LinkTarget } from "@/server/features/rankloop/publish/linkTargets.logic";
 import type { RankloopInjectedLink } from "@/types/schemas/rankloopPublish";
@@ -58,26 +58,6 @@ type PreflightResult =
 // ---------------------------------------------------------------------------
 // Step 1 — preflight
 // ---------------------------------------------------------------------------
-
-/**
- * The status this run may claim the article from, or null when the trust dial
- * forbids publishing it at all.
- *
- * `autopilot` is the only setting that lets an article publish without a human
- * having opened it, which is exactly what the user chose when they moved the
- * dial there. Everything else means someone approved this draft, and `review`
- * is not that. Returning the status rather than a boolean is what lets the
- * claim below compare-and-set against the same value this decision was made
- * on — a separate re-read could be a different row.
- */
-function claimableStatus(
-  trustDial: TrustDial,
-  status: string,
-): "approved" | "review" | null {
-  if (status === "approved") return "approved";
-  if (status === "review" && trustDial === "autopilot") return "review";
-  return null;
-}
 
 /**
  * Everything that must be true before anything is written to the user's site.
@@ -130,18 +110,19 @@ async function preflight(input: {
     };
   }
 
-  const trustDial = settings?.trustDial ?? WRITER_SETTINGS_DEFAULTS.trustDial;
-  const claimFrom = claimableStatus(trustDial, article.status);
-  if (claimFrom === null) {
+  // The dial, and — on the unattended path only — what the receipts say this
+  // action type has earned. See unattendedPublish.ts.
+  const claim = await resolvePublishClaim({
+    projectId: input.projectId,
+    proposalId: article.proposalId,
+    trustDial: settings?.trustDial ?? WRITER_SETTINGS_DEFAULTS.trustDial,
+    status: article.status,
+    now: new Date(),
+  });
+  if (!claim.ok) {
     return {
       ok: false,
-      blocked: {
-        reason: "trust_dial",
-        detail:
-          trustDial === "autopilot"
-            ? `This article is ${article.status}; only a finished draft can publish.`
-            : "Approve this draft before publishing it.",
-      },
+      blocked: { reason: "trust_dial", detail: claim.detail },
     };
   }
 
@@ -190,7 +171,7 @@ async function preflight(input: {
   const claimed = await PublishRepository.claimForPublishing({
     projectId: input.projectId,
     articleId: input.articleId,
-    fromStatus: claimFrom,
+    fromStatus: claim.claimFrom,
   });
   if (!claimed) {
     return {

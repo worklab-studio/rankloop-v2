@@ -5,6 +5,7 @@ import { ChevronLeft } from "lucide-react";
 import { toast } from "sonner";
 import { SearchConsoleConnectionCard } from "@/client/features/gsc/SearchConsoleConnectionCard";
 import { ProjectMarketFields } from "@/client/features/projects/ProjectMarketFields";
+import { RankloopAutomationSettings } from "@/client/features/rankloop-automation/RankloopAutomationSettings";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   clearLastProjectId,
@@ -59,6 +60,11 @@ export function ProjectSettings({ projectId }: { projectId: string }) {
           Search Console
         </h2>
         <SearchConsoleConnectionCard projectId={projectId} />
+      </section>
+
+      <section id="automation" className="space-y-3 scroll-mt-6">
+        <h2 className="text-sm font-medium text-base-content/50">Automation</h2>
+        <RankloopAutomationSettings projectId={projectId} />
       </section>
 
       <DangerSection project={project} canArchive={projects.length > 1} />

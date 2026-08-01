@@ -159,7 +159,15 @@ async function getMemoryStats(projectId: string): Promise<{
  * no recently started sync run. Capped — the 15-minute cron cadence absorbs
  * any backlog beyond `limit`.
  */
-async function getProjectsDueForSync(cutoffDate: string, limit: number) {
+// `projectId` narrows the same predicate to one project rather than answering
+// a different question: the per-project dispatcher (the DO alarm) and the
+// sweep must agree on what "due" means, or a routine would behave one way on
+// Cloudflare and another in Docker.
+async function getProjectsDueForSync(
+  cutoffDate: string,
+  limit: number,
+  projectId?: string,
+) {
   // Only a young active run suppresses its project — an older one is more
   // likely a stranded row than a live sync (see activeRunWedge).
   const activeRuns = db
@@ -188,6 +196,7 @@ async function getProjectsDueForSync(cutoffDate: string, limit: number) {
     .where(
       and(
         isNull(projects.archivedAt),
+        projectId ? eq(gscConnections.projectId, projectId) : undefined,
         notInArray(gscConnections.projectId, activeRuns),
         // Null latest date = never synced = due for the 90-day backfill.
         or(

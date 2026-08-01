@@ -108,7 +108,13 @@ async function getLatestRunForProject(projectId: string) {
  * user's explicit "Study my site", so the cron never crawls a site nobody
  * asked it to. Capped — the 15-minute cron cadence absorbs any backlog.
  */
-async function getProjectsDueForStudy(cutoff: string, limit: number) {
+// `projectId` narrows the same predicate to one project — see the note on
+// GscSyncRepository.getProjectsDueForSync: one due-rule, two dispatchers.
+async function getProjectsDueForStudy(
+  cutoff: string,
+  limit: number,
+  projectId?: string,
+) {
   // Only a young active run suppresses its project — an older one is more
   // likely a stranded row than a live study (see activeRunWedge).
   const activeRuns = db
@@ -136,6 +142,7 @@ async function getProjectsDueForStudy(cutoff: string, limit: number) {
     .where(
       and(
         isNull(projects.archivedAt),
+        projectId ? eq(latestDone.projectId, projectId) : undefined,
         notInArray(latestDone.projectId, activeRuns),
         lt(latestDone.latestFinishedAt, cutoff),
       ),

@@ -16,6 +16,7 @@ import {
 } from "@/client/features/dashboard/DashboardCards";
 import { AuthorityCard } from "@/client/features/dashboard/AuthorityCard";
 import { ContentInventoryCard } from "@/client/features/dashboard/ContentInventoryCard";
+import { DigestCard } from "@/client/features/dashboard/DigestCard";
 import { IndexationCard } from "@/client/features/dashboard/IndexationCard";
 import { McpConnectCard } from "@/client/features/dashboard/McpConnectCard";
 import { RankloopProgressSpine } from "@/client/features/dashboard/RankloopProgressSpine";
@@ -301,6 +302,7 @@ export function DashboardPage({ projectId }: { projectId: string }) {
         <div className="skeleton h-8 w-52" />
         <div className="skeleton h-36" />
         <div className="skeleton h-40" />
+        <div className="skeleton h-32" />
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="skeleton h-44" />
           <div className="skeleton h-44" />
@@ -326,9 +328,14 @@ export function DashboardPage({ projectId }: { projectId: string }) {
 
         <RankloopProgressSpine projectId={projectId} study={study} />
 
-        {/* Every card is half width on large screens (only the checklist and
-          the progress spine span). Cards with data render before setup
-          pitches and empty states. */}
+        {/* Full width, and above the grid: the digest is the one card someone
+          is meant to read top to bottom every morning, and its rows are
+          sentences rather than a stat. */}
+        <DigestCard projectId={projectId} />
+
+        {/* Every card below is half width on large screens (the checklist, the
+          progress spine and the digest are the three that span). Cards with
+          data render before setup pitches and empty states. */}
         <div className="grid items-start gap-5 lg:grid-cols-2">
           {[
             // Array order is the within-bucket order after the data-first sort:

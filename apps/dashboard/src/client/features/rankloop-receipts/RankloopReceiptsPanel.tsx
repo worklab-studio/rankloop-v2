@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { formatDay } from "@/client/features/dashboard/cardParts";
 import { proposalTypeDisplay } from "@/client/features/rankloop-articles/proposalDisplay.logic";
 import {
+  decidedByLabel,
   formatClicksDelta,
   formatReceiptPosition,
   receiptClicksDelta,
@@ -26,6 +27,27 @@ function ActionChip({ actionType }: { actionType: string }) {
         className={`size-1.5 shrink-0 rounded-full ${tagDotClass(display.color)}`}
       />
       {display.label}
+    </span>
+  );
+}
+
+// Who decided the action, next to what the action was. Deliberately the
+// neutral chip and not a tag colour: the action chip's colour already encodes
+// which signal fired, and a second coloured pill beside it would make the two
+// compete for the same glance. Provenance is a fact, not a severity.
+function DecidedByChip({ decidedBy }: { decidedBy: string | null }) {
+  const label = decidedByLabel(decidedBy);
+  if (label === null) return null;
+  return (
+    <span
+      className={`${chipBaseClass} bg-base-300 text-base-content/70`}
+      title={
+        label === "autopilot"
+          ? "rankloop approved and executed this one without a human"
+          : "a person approved this one"
+      }
+    >
+      {label}
     </span>
   );
 }
@@ -61,7 +83,10 @@ function ReceiptRowCells({ row }: { row: ReceiptRow }) {
   return (
     <tr>
       <td>
-        <ActionChip actionType={row.actionType} />
+        <span className="flex flex-wrap items-center gap-1.5">
+          <ActionChip actionType={row.actionType} />
+          <DecidedByChip decidedBy={row.decidedBy} />
+        </span>
       </td>
       <td>
         <span
