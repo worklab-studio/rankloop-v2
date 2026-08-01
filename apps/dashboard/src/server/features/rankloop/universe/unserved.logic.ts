@@ -126,12 +126,13 @@ type UnservedCandidate = {
 /**
  * Find the queries this site earns impressions for and does not serve.
  *
- * Four exclusions, in the order they cost least to apply: below the project's
- * own floor, already served inside the top 10, already the primary keyword of
- * a page in the manifest, and already sitting in the backlog. The last two
- * compare normalized token sets rather than raw strings — "descale a breville"
- * and "how to descale breville" are the same page, and exact matching would
- * cheerfully add the second one next to the first every week.
+ * Four exclusions: below the project's own floor, already the primary keyword
+ * of a page in the manifest, already sitting in the backlog, and already
+ * served inside the top 10. The middle two compare normalized token sets
+ * rather than raw strings — "descale a breville" and "how to descale breville"
+ * are the same page, and exact matching would cheerfully add the second one
+ * next to the first every week. The serving check runs last, on the built
+ * cluster, for the same reason: it is a question that is served, not a string.
  *
  * Survivors are clustered by that same token set, so the run proposes one row
  * per question instead of eleven rows per phrasing. The project's total is
@@ -161,7 +162,6 @@ export function selectUnservedQueries(input: {
   const clusters = new Map<string, QueryRollup[]>();
   for (const rollup of rollUpQueries(input.aggregates)) {
     if (rollup.impressions28 < floor) continue;
-    if (rollup.bestPosition <= INCIDENTAL_POSITION) continue;
     const clusterKey = normalizeTokenSet(rollup.query);
     // A query of nothing but stopwords has no token set to cluster on, and an
     // empty key would collect every one of them into a single meaningless row.
@@ -170,9 +170,16 @@ export function selectUnservedQueries(input: {
     clusters.set(clusterKey, [...(clusters.get(clusterKey) ?? []), rollup]);
   }
 
-  const candidates = [...clusters.entries()].map(([clusterKey, members]) =>
-    buildCandidate(clusterKey, members),
-  );
+  const candidates = [...clusters.entries()]
+    .map(([clusterKey, members]) => buildCandidate(clusterKey, members))
+    // The serving rule judges the cluster, not the phrasing. Applied per query
+    // it would drop the top-10 wording out of the rollup and let a sibling
+    // phrasing of the same question form its own cluster — proposing a second
+    // page for a question one page already answers, which is the
+    // cannibalization this rule exists to prevent. The other two exclusions
+    // stay per-query only because both are functions of the cluster key, so
+    // every member of a cluster answers them identically.
+    .filter((candidate) => candidate.bestPosition > INCIDENTAL_POSITION);
   // Biggest proven demand first; the keyword breaks ties so two runs over the
   // same window admit the same rows in the same order.
   return candidates.toSorted(

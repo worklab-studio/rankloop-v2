@@ -95,9 +95,23 @@ function PageTypeMix({ mix }: { mix: NonNullable<Playbook>["pageTypeMix"] }) {
 // of a 15-page median sample, 20% do" — the gap is the template contract.
 function FeatureDeltas({
   deltas,
+  sampleStudied,
 }: {
   deltas: NonNullable<Playbook>["featureDeltas"];
+  sampleStudied: number;
 }) {
+  // "No structural difference" is itself a claim about pages we read. With no
+  // median sample — a competitor whose posts sit at flat permalinks the
+  // sitemap shapes don't recognise — there is nothing to compare against, and
+  // saying so beats a comparison nobody measured.
+  if (sampleStudied === 0) {
+    return (
+      <p className="mt-4 text-sm text-base-content/60">
+        Their ordinary pages weren&rsquo;t sampled, so there is no
+        winners-vs-median comparison.
+      </p>
+    );
+  }
   if (deltas.length === 0) {
     return (
       <p className="mt-4 text-sm text-base-content/60">
@@ -160,7 +174,10 @@ export function RankloopCompetitorPlaybookCard({
       <CadenceStrip cadence={playbook.cadence} />
       <PageTypeMix mix={playbook.pageTypeMix} />
       {coverage === "full" ? (
-        <FeatureDeltas deltas={playbook.featureDeltas} />
+        <FeatureDeltas
+          deltas={playbook.featureDeltas}
+          sampleStudied={playbook.sampleStudied}
+        />
       ) : (
         <p className="mt-4 text-sm text-base-content/60">
           Studied from sitemap only &mdash; their pages block crawling, so there

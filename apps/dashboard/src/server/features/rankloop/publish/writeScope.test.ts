@@ -67,7 +67,7 @@ const ALLOWED_WRITES: Record<string, string> = {
     "updatePost — title and meta description on a post that was just created, plus the S3b retitle a human attested",
   "services/wordpressClient.ts:302": "createPost — a new post",
   "services/wordpressClient.ts:351": "createPage — a new hub page",
-  "services/wordpressClient.ts:444":
+  "services/wordpressClient.ts:450":
     "updatePostContent — the only write to an existing body, and it only ever carries a merged owned block",
   "services/indexNow.ts:21":
     "the IndexNow ping; a third party, not the user's site",

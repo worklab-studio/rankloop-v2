@@ -13,6 +13,7 @@ import {
   autopilotEligibility,
   autopilotGateStreak,
   autopilotKillSwitch,
+  autopilotWriterStreak,
   resolveActionBehavior,
   type ActionBehavior,
   type AutopilotEligibility,
@@ -99,7 +100,8 @@ function toSettledReceipts(
  * rather than counted as failures: a provider outage or a truncated response
  * is the writer's problem, and pausing autopilot for it would blame the gate
  * for an incident it had no part in. Reports that graded nothing are dropped
- * for the same reason.
+ * for the same reason. Those verdicts are not lost — `toWriterOutcomes` below
+ * is where they land.
  */
 function toGateOutcomes(
   rows: Awaited<ReturnType<typeof AutopilotRepository.getRecentGateVerdicts>>,
@@ -111,6 +113,42 @@ function toGateOutcomes(
     if (report.laws.length === 0) continue;
     if (report.failure && report.failure.reason !== "laws_unmet") continue;
     outcomes.push({ at: row.at, passed: report.passed });
+  }
+  return outcomes;
+}
+
+/** Failures the gate never got to judge — the writer's own. `publish_blocked`
+ *  is the one failure that is not one: the article passed, and publishing sent
+ *  it back. */
+const WRITER_FAILURE_REASONS = [
+  "provider_error",
+  "truncated",
+  "unparseable_frontmatter",
+  "internal_error",
+  "insufficient_credits",
+];
+
+/**
+ * The recent verdicts as the writer's own streak sees them, newest first.
+ *
+ * `passed` here means "this draft reached a law", not "the laws liked it": a
+ * graded fail is evidence the writer is working and ends the streak, which is
+ * why the two counters cannot share one array. Every terminal landing is one
+ * charged generation (~$0.12), so a writer that truncates on every attempt
+ * costs exactly as much as one the laws reject — the reason it needs a
+ * ceiling at all, and the reason that ceiling is not the gate's.
+ */
+function toWriterOutcomes(
+  rows: Awaited<ReturnType<typeof AutopilotRepository.getRecentGateVerdicts>>,
+): GateOutcome[] {
+  const outcomes: GateOutcome[] = [];
+  for (const row of rows) {
+    const report = parseLawReport(row.lawReportJson);
+    if (!report) continue;
+    const failed = WRITER_FAILURE_REASONS.some(
+      (reason) => reason === report.failure?.reason,
+    );
+    outcomes.push({ at: row.at, passed: !failed });
   }
   return outcomes;
 }
@@ -157,6 +195,8 @@ async function getStatus(input: {
       recentGateOutcomes: toGateOutcomes(verdictRows),
       adapterAuthError: toAuthError(failedConnection, input.now),
       priorGateFailures: state?.consecutiveGateFailures ?? 0,
+      recentWriterOutcomes: toWriterOutcomes(verdictRows),
+      priorWriterFailures: state?.consecutiveWriterFailures ?? 0,
     });
 
   const receipts = toSettledReceipts(receiptRows);
@@ -254,8 +294,13 @@ function toAuthError(
  *    re-judges it, because the streak that caused it is now history;
  * 2. a rejected credential pauses immediately and outranks any counting: a
  *    wrong credential retried unattended is how an account gets locked;
- * 3. otherwise the verdicts that landed since the watermark fold into the
- *    counter, and three in a row trip the switch.
+ * 3. otherwise the verdicts that landed since the watermark fold into the two
+ *    counters, and three in a row on either trips the switch.
+ *
+ * Two counters, not one: "the laws rejected three drafts" and "three drafts
+ * never reached a law" are different faults with different first moves, and
+ * folding them together would pause a whole project for one provider outage.
+ * They cost the same money, which is why neither is allowed to run free.
  *
  * Idempotent by the watermark: a second call in the same tick sees no new
  * verdicts, changes nothing, and writes nothing.
@@ -276,10 +321,11 @@ async function reconcile(input: {
     const pause = authPause(authError);
     await AutopilotRepository.saveState({
       projectId: input.projectId,
-      // The gate had nothing to do with this one. Carrying the count forward
-      // rather than zeroing it keeps a project that was two bad drafts deep
-      // from starting over on the day its token expired.
+      // Neither counter had anything to do with this one. Carrying them
+      // forward rather than zeroing them keeps a project that was two bad
+      // drafts deep from starting over on the day its token expired.
       consecutiveGateFailures: state?.consecutiveGateFailures ?? 0,
+      consecutiveWriterFailures: state?.consecutiveWriterFailures ?? 0,
       pausedAt: pause.since,
       pausedReason: pause.reason,
       updatedAt: input.now.toISOString(),
@@ -292,28 +338,37 @@ async function reconcile(input: {
     state?.updatedAt,
   );
   const outcomes = toGateOutcomes(verdictRows);
+  const writerOutcomes = toWriterOutcomes(verdictRows);
   // Nothing new to fold: leave the row exactly as it is. Writing it anyway
   // would move the watermark past verdicts that landed in the same instant.
-  if (outcomes.length === 0) return null;
+  if (outcomes.length === 0 && writerOutcomes.length === 0) return null;
 
   const streak = autopilotGateStreak({
     priorFailures: state?.consecutiveGateFailures ?? 0,
     recentGateOutcomes: outcomes,
   });
+  const writerStreak = autopilotWriterStreak({
+    priorFailures: state?.consecutiveWriterFailures ?? 0,
+    recentWriterOutcomes: writerOutcomes,
+  });
+  // The gate's sentence wins a tie: it names a cause the user can open a law
+  // report on, where "never reached the gate" sends them to the provider.
+  const pause = streak.pause ?? writerStreak.pause;
   await AutopilotRepository.saveState({
     projectId: input.projectId,
     consecutiveGateFailures: streak.consecutiveGateFailures,
-    pausedAt: streak.pause?.since ?? null,
-    pausedReason: streak.pause?.reason ?? null,
+    consecutiveWriterFailures: writerStreak.consecutiveWriterFailures,
+    pausedAt: pause?.since ?? null,
+    pausedReason: pause?.reason ?? null,
     updatedAt: input.now.toISOString(),
   });
-  return streak.pause;
+  return pause;
 }
 
 /**
  * A human takes the switch off.
  *
- * The counter goes back to zero with the pause, and the watermark moves to
+ * Both counters go back to zero with the pause, and the watermark moves to
  * now, which is what makes the resume final: the three drafts that tripped it
  * are behind the watermark and can never be folded in again. Resuming a
  * project that was never paused is a no-op that still writes the row — the
@@ -323,6 +378,7 @@ async function resume(input: { projectId: string; now: Date }): Promise<void> {
   await AutopilotRepository.saveState({
     projectId: input.projectId,
     consecutiveGateFailures: 0,
+    consecutiveWriterFailures: 0,
     pausedAt: null,
     pausedReason: null,
     updatedAt: input.now.toISOString(),

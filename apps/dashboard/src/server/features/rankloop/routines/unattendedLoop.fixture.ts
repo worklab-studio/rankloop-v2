@@ -436,6 +436,17 @@ type Sent = {
 
 export const sent: Sent[] = [];
 
+/**
+ * The publish target's answer to our credentials.
+ *
+ * Flipped to `true` this rejects every write event with a 401 while the
+ * connection row still says 'ok' — a token revoked after it was last tested,
+ * which is the only way an unattended publish ever meets an auth failure. The
+ * digest receiver is unaffected: it is a different endpoint with a different
+ * secret.
+ */
+export const publishAuth = { rejects: false };
+
 function jsonResponse(payload: unknown, status = 200): Response {
   return new Response(JSON.stringify(payload), {
     status,
@@ -474,6 +485,9 @@ export function fakeFetch(): typeof fetch {
     });
 
     if (url.startsWith(DIGEST_WEBHOOK_URL)) return jsonResponse({ ok: true });
+    if (publishAuth.rejects) {
+      return jsonResponse({ error: "bad signature" }, 401);
+    }
     if (event === "hub.ensure") {
       return jsonResponse({
         ref: "hub-1",
@@ -495,5 +509,20 @@ export function modelResponse(text: string) {
     finishReason: "stop",
     usage: { inputTokens: 1000, outputTokens: 800 },
     providerMetadata: { openrouter: { usage: { cost: 0.05 } } },
+  };
+}
+
+/**
+ * The same call, cut off at the token ceiling.
+ *
+ * `finishReason: 'length'` is what draft.ts reads to land `truncated`, and the
+ * cost block is identical to a good call's on purpose: a truncated generation
+ * is charged in full. That is the whole reason this class of failure has to be
+ * counted — the article is worth nothing and the money is gone either way.
+ */
+export function truncatedModelResponse() {
+  return {
+    ...modelResponse(COMPLIANT_DRAFT.slice(0, 300)),
+    finishReason: "length",
   };
 }

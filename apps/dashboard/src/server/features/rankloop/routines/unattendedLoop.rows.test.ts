@@ -10,7 +10,9 @@ import {
   articles,
   autopilotState,
   digests,
+  llmSpend,
   proposals,
+  publishConnections,
   receipts,
 } from "@/db/schema";
 import {
@@ -28,9 +30,11 @@ import {
   SLUG,
   TODAY,
   fakeFetch,
+  publishAuth,
   seed,
   sent,
   testDb,
+  truncatedModelResponse,
   type SeedOptions,
 } from "./unattendedLoop.fixture";
 
@@ -124,6 +128,12 @@ vi.mock("@/server/lib/runtime-env", () => ({
     Promise.resolve(mocks.runtimeEnv.get(name)),
   getRequiredEnvValue: (name: string) =>
     Promise.resolve(mocks.runtimeEnv.get(name)),
+  // Read off the same map rather than pinned false: the writer meters its
+  // generation against the credit pool only in hosted mode, and this fixture
+  // sets no AUTH_MODE — the self-hosted deployment spec 0025's acceptance is
+  // written against, where the key is the operator's own.
+  isHostedServerAuthMode: () =>
+    Promise.resolve(mocks.runtimeEnv.get("AUTH_MODE") === "hosted"),
 }));
 vi.mock("ai", () => ({ generateText: mocks.generateText }));
 vi.mock("@/server/lib/openrouter", () => ({
@@ -308,6 +318,24 @@ async function storedState() {
   return rows[0];
 }
 
+/** Every metered generation this project was charged for. The money
+ *  assertion: a loop that re-buys a doomed draft shows up here and nowhere
+ *  else, because the article rows it produces all look alike. */
+async function storedSpend() {
+  return testDb
+    .select()
+    .from(llmSpend)
+    .where(eq(llmSpend.projectId, PROJECT_ID));
+}
+
+async function storedConnection() {
+  const rows = await testDb
+    .select()
+    .from(publishConnections)
+    .where(eq(publishConnections.projectId, PROJECT_ID));
+  return rows[0];
+}
+
 async function storedReceipts() {
   return testDb
     .select()
@@ -361,6 +389,15 @@ async function reseed(options: SeedOptions = {}): Promise<void> {
   mocks.queued.length = 0;
   sent.length = 0;
   kvPuts.length = 0;
+  publishAuth.rejects = false;
+}
+
+/** A tick whose workflow instance is expected to die inside a step. The
+ *  platform records the dead instance and the next wake goes on without it;
+ *  everywhere else in this file a thrown instance is a bug the test should
+ *  surface, which is why this is not what `tick` does. */
+async function tickThroughDeadInstance(at: Date): Promise<void> {
+  await tick(at).catch(() => undefined);
 }
 
 beforeEach(async () => {
@@ -637,6 +674,90 @@ describe("three failed gates stop the machine, and a human starts it again", () 
       "autopilot paused — webhook rejected our credentials",
     );
     expect((await storedProposal())?.status).toBe("proposed");
+  });
+
+  it("records the rejection an unattended publish met, so nobody has to press Test connection first", async () => {
+    // The connection was tested and passed; the credential was revoked
+    // afterwards. Nothing but a publish will ever discover that, and the test
+    // above starts from a row only a human could have written.
+    await tick();
+    expect((await storedArticles())[0]?.status).toBe("review");
+
+    publishAuth.rejects = true;
+    await tickThroughDeadInstance(dayAfter(1));
+
+    expect((await storedConnection())?.status).toBe("failed");
+
+    // Which is the row the switch reads on the next wake.
+    publishAuth.rejects = false;
+    await tick(dayAfter(2));
+    expect((await storedState())?.pausedReason).toBe(
+      "autopilot paused — webhook rejected our credentials",
+    );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Acceptance 4, the other half — failures that never reached the gate
+// ---------------------------------------------------------------------------
+
+describe("a draft that never reached the gate is bought twice, not forever", () => {
+  it("stops re-buying one proposal after two drafts died before review", async () => {
+    // Truncation, every attempt: charged in full, and no law ever gets to
+    // grade it. The gate streak cannot see this class at all — the report it
+    // stores has an empty checklist — so the only thing standing between it
+    // and a call every fifteen minutes is the per-proposal ceiling.
+    mocks.generateText.mockResolvedValue(truncatedModelResponse());
+
+    for (let day = 0; day < 4; day += 1) await tick(dayAfter(day));
+
+    expect(mocks.generateText).toHaveBeenCalledTimes(2);
+    expect(await storedSpend()).toHaveLength(2);
+    const written = await storedArticles();
+    expect(written).toHaveLength(2);
+    expect(written.every((row) => row.status === "failed")).toBe(true);
+
+    // And it says so by name rather than going quiet, which from the outside
+    // is indistinguishable from a loop that had nothing to do.
+    expect(refusals("write")).toContain(
+      `${KEYWORD}: 2 drafts failed before reaching review — it needs a human`,
+    );
+  });
+
+  it("pauses the whole loop on the third draft in a row that never reached the gate", async () => {
+    mocks.generateText.mockResolvedValue(truncatedModelResponse());
+
+    for (let day = 0; day < 3; day += 1) {
+      await tick(dayAfter(day));
+      // A fresh keyword each day, the way the net-new block would: the
+      // per-proposal ceiling alone would otherwise stop the count at two.
+      await testDb.insert(proposals).values({
+        id: `proposal_extra_${day}`,
+        projectId: PROJECT_ID,
+        type: "write_new",
+        track: "net_new",
+        status: "proposed",
+        target: `${KEYWORD} ${day}`,
+        pageTypeId: PAGE_TYPE_ID,
+        keywordBacklogId: KEYWORD_ID,
+        score: 7.2,
+      });
+    }
+    await tick(dayAfter(3));
+
+    const paused = await storedState();
+    expect(paused?.pausedReason).toBe(
+      "autopilot paused — 3 drafts in a row never reached the gate",
+    );
+    expect(paused?.pausedAt).not.toBeNull();
+    // Counted apart from the gate's own streak: no law rejected anything here.
+    expect(paused?.consecutiveGateFailures).toBe(0);
+
+    // And the pause is real money saved, not just a row.
+    const spent = (await storedSpend()).length;
+    await tick(dayAfter(4));
+    expect(await storedSpend()).toHaveLength(spent);
+    expect(refusals("run")).toEqual([paused?.pausedReason]);
   });
 });
 

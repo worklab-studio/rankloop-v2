@@ -201,7 +201,10 @@ async function getHubPathsByPageType(
 async function claimForPublishing(input: {
   projectId: string;
   articleId: string;
-  fromStatus: "approved" | "review";
+  /** `failed` is the resume case: a run that crashed after creating the post
+   *  lands the article there, and the run that finishes it re-takes the row
+   *  from exactly that status. */
+  fromStatus: "approved" | "review" | "failed";
 }): Promise<boolean> {
   const rows = await db
     .update(articles)

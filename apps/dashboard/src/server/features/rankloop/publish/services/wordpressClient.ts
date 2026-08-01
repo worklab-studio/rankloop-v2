@@ -420,11 +420,17 @@ async function findPostContentBySlug(
   }
   const post = parsed.data[0];
   if (!post) return null;
-  const content = post.content.raw ?? post.content.rendered;
+  // `raw` or nothing — the render is never a substitute. A site that hides
+  // content.raw from an authenticated edit context cannot be link-injected
+  // safely: merging into a render and writing it back would replace the user's
+  // source with its own output, expanding every shortcode and stripping every
+  // block comment on a post rankloop did not write. `""` is a legitimate raw
+  // body, so this is an `undefined` check rather than a falsy one.
+  const content = post.content.raw;
   if (content === undefined) {
-    // A site that hides content.raw from an authenticated edit context cannot
-    // be link-injected safely: merging into a render and writing it back
-    // would replace the user's source with its own output.
+    console.info(
+      `[rankloop-publish] ${slug} hides content.raw — declining to edit it`,
+    );
     return null;
   }
   return { id: post.id, link: post.link, content };

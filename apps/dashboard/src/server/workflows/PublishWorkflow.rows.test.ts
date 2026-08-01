@@ -391,6 +391,63 @@ describe("the publish commit, replayed", () => {
   });
 });
 
+describe("a run that throws past the claim", () => {
+  it("leaves no article stranded in publishing", async () => {
+    await setUp("wordpress");
+    // The hub create fails, which is the first thing that can throw after
+    // preflight has already claimed the row into `publishing`.
+    const live = wordpressFetch();
+    vi.stubGlobal("fetch", ((input: string, init?: RequestInit) => {
+      if (String(input).endsWith("/wp/v2/pages") && init?.method === "POST") {
+        return Promise.reject(new TypeError("fetch failed"));
+      }
+      return live(input, init);
+      // oxlint-disable-next-line typescript/no-unsafe-type-assertion -- test double: the adapters only ever call fetch(url, init)
+    }) as unknown as typeof fetch);
+
+    await expect(runWorkflow()).rejects.toThrow();
+
+    const article = await storedArticle();
+    // `publishing` is the one status nothing can clear: it holds the proposal's
+    // in-flight slot, belongs to no queue tab, and every path that could act on
+    // the article refuses it.
+    expect(article?.status).toBe("failed");
+    expect(article?.adapterRef).toBeNull();
+    // Nothing reached the site and nothing downstream moved.
+    expect(postCreations("wordpress")).toHaveLength(0);
+    expect(await storedReceipts()).toHaveLength(0);
+  });
+
+  it("finishes an article whose post went live before the crash, with no second post", async () => {
+    await setUp("wordpress");
+    await runWorkflow();
+    const ref = (await storedArticle())?.adapterRef;
+    expect(postCreations("wordpress")).toHaveLength(1);
+
+    // The row exactly as `landCrashed` leaves one whose create succeeded and
+    // whose commit never ran: terminal, with the adapterRef as the evidence.
+    await testDb.delete(receipts);
+    await testDb
+      .update(articles)
+      .set({ status: "failed", publishedAt: null })
+      .where(eq(articles.id, ARTICLE_ID));
+    await testDb
+      .update(proposals)
+      .set({ status: "approved", executedAt: null })
+      .where(eq(proposals.id, PROPOSAL_ID));
+
+    await runWorkflow();
+
+    const article = await storedArticle();
+    expect(article?.status).toBe("published");
+    expect(article?.adapterRef).toBe(ref);
+    expect(article?.publishedAt).toBeTruthy();
+    expect(postCreations("wordpress")).toHaveLength(1);
+    expect(await storedReceipts()).toHaveLength(1);
+    expect((await storedProposal())?.status).toBe("done");
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Acceptance 3 — the bytes outside the block
 // ---------------------------------------------------------------------------

@@ -7,6 +7,7 @@ import { hasWriterProvider } from "@/server/features/rankloop/writing/draft";
 import { ArticleWriteService } from "@/server/features/rankloop/writing/services/ArticleWriteService";
 import { NetNewProposalsService } from "@/server/features/rankloop/writing/services/NetNewProposalsService";
 import {
+  AUTOPILOT_PROPOSAL_FAIL_LIMIT,
   AUTOPILOT_PUBLISH_CAP,
   AUTOPILOT_WRITE_CAP,
 } from "@/shared/rankloop-autopilot";
@@ -173,6 +174,7 @@ function earned(status: Status, actionType: string): string | null {
  */
 async function approvePhase(input: {
   projectId: string;
+  now: Date;
   status: Status;
   quota: Quota;
   log: RunLog;
@@ -199,7 +201,17 @@ async function approvePhase(input: {
   const throttle = input.quota.throttle;
   const netNewCap = throttle?.cap ?? cap;
   let approved = 0;
-  let netNew = 0;
+  // Today's, not this run's. The throttle's cap is a per-day ceiling and this
+  // is one wake of ninety-six, so a counter that started at zero every time
+  // would pace the queue and never bound the day — the refusal sentence below
+  // would print each tick while the cap was handed out again. Only paid for
+  // when a throttle is actually on, so the healthy path keeps its one query.
+  let netNew = throttle
+    ? await AutopilotRepository.countNetNewApprovedSince(
+        input.projectId,
+        `${input.now.toISOString().slice(0, 10)}T00:00:00.000Z`,
+      )
+    : 0;
 
   for (const proposal of queue) {
     if (approved >= cap) {
@@ -263,6 +275,13 @@ async function approveOne(input: {
  * `articles(proposal_id)`, which is the real concurrency guard: two dispatchers
  * reaching this line for one proposal produce one article and one
  * `alreadyWriting`, never two drafts and two bills.
+ *
+ * That guard is about two writers at once, not about the same writer forever.
+ * A `failed` article frees the slot deliberately — it is what lets a human
+ * write again after fixing the page type — so unattended, the same proposal
+ * comes back every wake and is bought again. AUTOPILOT_PROPOSAL_FAIL_LIMIT is
+ * where that stops, and it is a skip in this loop rather than a WHERE clause
+ * because a proposal filtered out in SQL is one nobody can be told about.
  */
 async function writePhase(input: {
   projectId: string;
@@ -297,6 +316,13 @@ async function writePhase(input: {
   }
 
   for (const proposal of writable) {
+    if (proposal.failedArticles >= AUTOPILOT_PROPOSAL_FAIL_LIMIT) {
+      input.log.refused(
+        "write",
+        `${proposal.target}: ${proposal.failedArticles} drafts failed before reaching review — it needs a human`,
+      );
+      continue;
+    }
     try {
       const started = await ArticleWriteService.startArticle({
         projectId: input.projectId,

@@ -172,6 +172,35 @@ describe("proposeTypes", () => {
     );
   });
 
+  it("binds keywords admitted after approval to the approved type", async () => {
+    mocks.repo.getPageTypes.mockResolvedValue([
+      pageTypeRow({
+        status: "approved",
+        decidedAt: "2026-07-02T00:00:00.000Z",
+        demand: 18400,
+        instanceCount: 47,
+      }),
+    ]);
+    mocks.repo.countBoundKeywords.mockResolvedValue(51);
+
+    const result = await PagePlanService.proposeTypes({
+      projectId: PROJECT_ID,
+    });
+
+    expect(mocks.repo.bindKeywordsToPageType).toHaveBeenCalledWith({
+      projectId: PROJECT_ID,
+      pageTypeId: "pt_1",
+      keywordIds: ["kw_3", "kw_2", "kw_1", "kw_0"],
+    });
+    // The row itself stays the user's: no re-proposal, no re-SERP, and the
+    // stored demand is not replaced by the top-up's sliver.
+    expect(mocks.repo.upsertPageType).not.toHaveBeenCalled();
+    expect(result.typesProposed).toBe(0);
+    expect(mocks.repo.updatePageType).toHaveBeenCalledWith("pt_1", {
+      instanceCount: 51,
+    });
+  });
+
   it("leaves a type the user declined declined, however strongly it re-detects", async () => {
     mocks.repo.getPageTypes.mockResolvedValue([
       pageTypeRow({

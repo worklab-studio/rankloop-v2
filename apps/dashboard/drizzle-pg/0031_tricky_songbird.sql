@@ -1,0 +1,1 @@
+ALTER TABLE "autopilot_state" ADD COLUMN "consecutive_writer_failures" integer DEFAULT 0 NOT NULL;

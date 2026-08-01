@@ -1,5 +1,6 @@
 import { parseDbTimestamp } from "@/client/features/dashboard/cardParts";
 import {
+  AUTOPILOT_PROPOSAL_FAIL_LIMIT,
   AUTOPILOT_PUBLISH_CAP,
   AUTOPILOT_WRITE_CAP,
 } from "@/shared/rankloop-autopilot";
@@ -124,7 +125,7 @@ export function trustDialCopy(trustDial: TrustDial): string {
  * setting, and printing a figure here would claim rankloop chose it.
  */
 export function unattendedCapsCopy(): string {
-  return `approves up to today's quota, writes ${AUTOPILOT_WRITE_CAP} and publishes ${AUTOPILOT_PUBLISH_CAP} per run`;
+  return `approves up to today's quota, writes ${AUTOPILOT_WRITE_CAP} and publishes ${AUTOPILOT_PUBLISH_CAP} per run, and gives up on a keyword after ${AUTOPILOT_PROPOSAL_FAIL_LIMIT} failed drafts`;
 }
 
 // ---------------------------------------------------------------------------

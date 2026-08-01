@@ -205,6 +205,16 @@ describe("compareWinnersToMedian", () => {
     expect(result.sampleStudied).toBe(1);
   });
 
+  it("claims no deltas when the median cohort was never sampled", () => {
+    const result = compareWinnersToMedian(
+      [features({ byline: true, dateModified: true })],
+      [],
+    );
+
+    expect(result.deltas).toEqual([]);
+    expect(result.sampleStudied).toBe(0);
+  });
+
   it("survives an empty cohort — a blocked crawl measures nothing", () => {
     const result = compareWinnersToMedian([], []);
 

@@ -549,6 +549,13 @@ export const autopilotState = sqliteTable("autopilot_state", {
   consecutiveGateFailures: integer("consecutive_gate_failures")
     .notNull()
     .default(0),
+  // Drafts in a row that died before any law graded them — truncated, 502,
+  // unreadable frontmatter. Counted separately from the gate's streak because
+  // they are a different fault with a different sentence, and folding them
+  // into it would pause a whole project for one provider outage.
+  consecutiveWriterFailures: integer("consecutive_writer_failures")
+    .notNull()
+    .default(0),
   // Null while autopilot is running. Set the instant it stops itself; only a
   // human resume clears it.
   pausedAt: text("paused_at"),

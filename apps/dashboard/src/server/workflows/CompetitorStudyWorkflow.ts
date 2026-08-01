@@ -89,15 +89,13 @@ export class CompetitorStudyWorkflow extends WorkflowEntrypoint<
         SINGLE_ATTEMPT_STEP_CONFIG,
         async () => {
           try {
-            return {
-              pages: await CompetitorStudyService.studyTopPages(context),
-            };
+            return await CompetitorStudyService.studyTopPages(context);
           } catch (error) {
             console.warn(
               `[competitors] ${runId} top-pages step failed:`,
               error,
             );
-            return { pages: [] as SnapshotPage[] };
+            return { pages: [] as SnapshotPage[], windowSaturated: false };
           }
         },
       );
@@ -146,6 +144,7 @@ export class CompetitorStudyWorkflow extends WorkflowEntrypoint<
             crawled: crawl.results,
             coverage: crawl.coverage,
             current: earning.pages,
+            windowSaturated: earning.windowSaturated,
           }),
       );
 

@@ -90,7 +90,25 @@ export class PublishWorkflow extends WorkflowEntrypoint<Env, PublishParams> {
       return;
     }
 
-    await this.publish(preflight.context, step);
+    try {
+      await this.publish(preflight.context, step);
+    } catch (error) {
+      // Anything that threw past the steps' own retries: land the article
+      // terminally before rethrowing. `preflight` claimed the row into
+      // `publishing`, and a row left there holds the proposal's one in-flight
+      // slot (articles_one_in_flight_per_proposal_idx), belongs to no queue
+      // tab, and is refused by every path that could clear it — including a
+      // second publish.
+      console.error(`[rankloop-publish] ${articleId} crashed:`, error);
+      await pgStep(step, "land-failed", FREE_STEP_CONFIG, () =>
+        PublishService.landCrashed({
+          articleId,
+          projectId,
+          detail: errorLine(error),
+        }),
+      );
+      throw error;
+    }
   }
 
   private async publish(
@@ -186,4 +204,11 @@ export class PublishWorkflow extends WorkflowEntrypoint<Env, PublishParams> {
       `[rankloop-publish] ${context.articleId} -> ${published.url} (${injected} of ${targets.length} link${targets.length === 1 ? "" : "s"} injected)`,
     );
   }
+}
+
+/** One line of it, bounded: the detail rides in the article's law report and
+ *  is read on the Failed tab, not in a log viewer. */
+function errorLine(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  return message.replace(/\s+/g, " ").slice(0, 300);
 }

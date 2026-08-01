@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import type { WorkflowEvent, WorkflowStep } from "cloudflare:workers";
 import type { PublishContext } from "@/server/features/rankloop/publish/services/publishContext";
 
@@ -10,6 +10,16 @@ const mocks = vi.hoisted(() => ({
   publish: {
     preflight: vi.fn(),
     landBlocked: vi.fn(),
+    // Typed to the fields these tests read back off `.mock.calls`: which
+    // article was landed, and the detail that says what threw.
+    landCrashed:
+      vi.fn<
+        (input: {
+          articleId: string;
+          projectId: string;
+          detail: string;
+        }) => Promise<unknown>
+      >(),
     ensureHub: vi.fn(),
     publishPost: vi.fn(),
     upsertManifestPage: vi.fn(),
@@ -95,12 +105,20 @@ async function runWorkflow() {
   await workflow.run(makeEvent(), makeFakeStep());
 }
 
+/** Every mock above, reset. A named parameter rather than an inline walk
+ *  because the groups are no longer uniform — `publish.landCrashed` is typed
+ *  to the fields these tests read back — and a union of group shapes widens
+ *  `Object.values` to `any`. */
+function resetMocks(groups: Record<string, Record<string, Mock>>): void {
+  for (const group of Object.values(groups)) {
+    for (const mock of Object.values(group)) mock.mockReset();
+  }
+}
+
 beforeEach(() => {
   vi.resetModules();
   stepOrder.length = 0;
-  for (const group of Object.values(mocks)) {
-    for (const mock of Object.values(group)) mock.mockReset();
-  }
+  resetMocks(mocks);
   mocks.publish.preflight.mockResolvedValue({ ok: true, context: CONTEXT });
   mocks.publish.ensureHub.mockResolvedValue({
     contentPageId: "page_hub",
@@ -133,7 +151,12 @@ beforeEach(() => {
   mocks.links.wireDerivedArtifacts.mockResolvedValue({ written: [] });
   mocks.publish.submitIndexNow.mockResolvedValue({ submitted: true });
   mocks.publish.commitPublished.mockResolvedValue(undefined);
+  mocks.publish.landCrashed.mockResolvedValue({ landed: true });
 });
+
+async function runWorkflowExpectingThrow(): Promise<void> {
+  await expect(runWorkflow()).rejects.toThrow();
+}
 
 describe("PublishWorkflow — the order", () => {
   it("runs the spec's eight steps in order", async () => {
@@ -330,6 +353,41 @@ describe("PublishWorkflow — what is fatal after the post is live", () => {
     await runWorkflow();
 
     expect(mocks.publish.commitPublished).toHaveBeenCalledTimes(1);
+  });
+
+  it("lands the article terminally when a step before the create throws", async () => {
+    mocks.publish.ensureHub.mockRejectedValue(new Error("wp 502"));
+
+    await runWorkflowExpectingThrow();
+
+    // `preflight` already claimed the row into `publishing`. Leaving it there
+    // holds the proposal's one in-flight slot, shows the article in no queue
+    // tab, and no second run can clear it.
+    const [crashed] = mocks.publish.landCrashed.mock.calls[0];
+    expect(crashed.articleId).toBe("article_1");
+    expect(crashed.projectId).toBe("project_1");
+    expect(crashed.detail).toContain("wp 502");
+    expect(stepOrder).toEqual(["preflight", "hub", "land-failed"]);
+  });
+
+  it("lands the article terminally when a step after the create throws", async () => {
+    mocks.publish.commitPublished.mockRejectedValue(new Error("db gone"));
+
+    await runWorkflowExpectingThrow();
+
+    // The worst variant: the post is live on the user's site and the commit
+    // never ran. The row still may not stay `publishing` — the recorded
+    // adapterRef is what lets a later run finish this one.
+    expect(mocks.publish.landCrashed).toHaveBeenCalledWith(
+      expect.objectContaining({ articleId: "article_1" }),
+    );
+    expect(stepOrder.at(-1)).toBe("land-failed");
+  });
+
+  it("rethrows so the instance ends errored rather than reporting success", async () => {
+    mocks.publish.upsertManifestPage.mockRejectedValue(new Error("db gone"));
+
+    await expect(runWorkflow()).rejects.toThrow("db gone");
   });
 
   it("gives the create step no retries — a retried create is a duplicate post", async () => {

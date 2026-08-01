@@ -12,17 +12,25 @@ import {
   describeRun,
   type PublishContext,
 } from "@/server/features/rankloop/publish/services/publishContext";
+import {
+  landBlocked,
+  landCrashed,
+  type PublishBlocked,
+} from "@/server/features/rankloop/publish/services/publishLanding";
+import { PublishConnectionRepository } from "@/server/features/rankloop/publish/repositories/PublishConnectionRepository";
 import { PublishRepository } from "@/server/features/rankloop/publish/repositories/PublishRepository";
 import { PagePlanRepository } from "@/server/features/rankloop/page-plan/repositories/PagePlanRepository";
 import { ProjectRepository } from "@/server/features/projects/repositories/ProjectRepository";
-import { resolvePublishClaim } from "@/server/features/rankloop/publish/services/unattendedPublish";
+import {
+  resolvePublishClaim,
+  resumeClaimStatus,
+} from "@/server/features/rankloop/publish/services/unattendedPublish";
 import { ReceiptsService } from "@/server/features/rankloop/receipts/services/ReceiptsService";
 import { ArticleGateService } from "@/server/features/rankloop/writing/services/ArticleGateService";
 import { ArticleRepository } from "@/server/features/rankloop/writing/repositories/ArticleRepository";
 import { WriterSettingsRepository } from "@/server/features/rankloop/writing/repositories/WriterSettingsRepository";
 import { AppError } from "@/server/lib/errors";
 import { WRITER_SETTINGS_DEFAULTS } from "@/shared/rankloop-writing";
-import { parseLawReport } from "@/types/schemas/rankloopWriter";
 import type { LinkTarget } from "@/server/features/rankloop/publish/linkTargets.logic";
 import type { RankloopInjectedLink } from "@/types/schemas/rankloopPublish";
 
@@ -35,25 +43,28 @@ import type { RankloopInjectedLink } from "@/types/schemas/rankloopPublish";
 // half of publishing that edits pages rankloop did not create, and keeping
 // them behind their own import is how "no adapter writes anywhere outside the
 // delimited block except when creating a new post" stays provable by grep.
+// The two ways a run ends without publishing — the refusal and the crash —
+// live in publishLanding.ts and are re-exported here, so the workflow still
+// reads every step off one object.
 
 // ---------------------------------------------------------------------------
 // The context every step after preflight reads
 // ---------------------------------------------------------------------------
 
-type PublishBlocked = {
-  reason:
-    | "not_connected"
-    | "trust_dial"
-    | "laws_unmet"
-    | "no_content"
-    | "already_published"
-    | "lost_claim";
-  detail: string;
-};
-
 type PreflightResult =
   | { ok: true; context: PublishContext }
   | { ok: false; blocked: PublishBlocked };
+
+/** Somebody else holds this row. The refusal is shared by the two places that
+ *  can lose it — the resume's re-take and the dial's claim — because both mean
+ *  the same thing and `landBlocked` deliberately does nothing with either. */
+const LOST_CLAIM: PreflightResult = {
+  ok: false,
+  blocked: {
+    reason: "lost_claim",
+    detail: "Another publish is already running for this article.",
+  },
+};
 
 // ---------------------------------------------------------------------------
 // Step 1 — preflight
@@ -104,6 +115,21 @@ async function preflight(input: {
   // dial were satisfied on the run that created it and re-judging them now
   // could only strand a live page halfway through its own publish.
   if (article.adapterRef) {
+    // A replay of the same instance is already holding `publishing`. A fresh
+    // run is not: it picks the article up from wherever the crashed run left
+    // it, and the commit's CAS reads `publishing` — without re-taking the row
+    // the run would finish with the flip silently missing.
+    if (article.status !== "publishing") {
+      const from = resumeClaimStatus(article.status);
+      const retaken =
+        from !== null &&
+        (await PublishRepository.claimForPublishing({
+          projectId: input.projectId,
+          articleId: input.articleId,
+          fromStatus: from,
+        }));
+      if (!retaken) return LOST_CLAIM;
+    }
     return {
       ok: true,
       context: await buildContext({ article, project }),
@@ -173,53 +199,9 @@ async function preflight(input: {
     articleId: input.articleId,
     fromStatus: claim.claimFrom,
   });
-  if (!claimed) {
-    return {
-      ok: false,
-      blocked: {
-        reason: "lost_claim",
-        detail: "Another publish is already running for this article.",
-      },
-    };
-  }
+  if (!claimed) return LOST_CLAIM;
 
   return { ok: true, context: await buildContext({ article, project }) };
-}
-
-/**
- * Land a refusal: the article goes back to `review` and the reason is written
- * beside its law report.
- *
- * The report's own verdict is left exactly as the gate wrote it. An article
- * that was blocked by a missing connection still passed nineteen laws, and
- * overwriting that checklist with a red one would make the product lie about
- * its own work in the one place users check it.
- */
-async function landBlocked(input: {
-  articleId: string;
-  projectId: string;
-  blocked: PublishBlocked;
-}): Promise<void> {
-  if (input.blocked.reason === "already_published") return;
-  const article = await ArticleRepository.getArticleById(
-    input.projectId,
-    input.articleId,
-  );
-  const report = parseLawReport(article?.lawReportJson ?? null);
-  await ArticleRepository.updateArticle(input.articleId, {
-    status: "review",
-    ...(report
-      ? {
-          lawReportJson: JSON.stringify({
-            ...report,
-            failure: {
-              reason: "publish_blocked" as const,
-              detail: input.blocked.detail,
-            },
-          }),
-        }
-      : {}),
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -269,12 +251,14 @@ async function ensureHub(context: PublishContext): Promise<HubResult> {
     };
   }
 
-  const hub = await resolved.adapter.ensureHub({
-    name: context.pageTypeName,
-    path: hubPath,
-    slug: slugFromPath(hubPath),
-    description: `Everything we have written about ${context.pageTypeName.toLowerCase()}.`,
-  });
+  const hub = await recordingAuthFailure(context.projectId, () =>
+    resolved.adapter.ensureHub({
+      name: context.pageTypeName,
+      path: hubPath,
+      slug: slugFromPath(hubPath),
+      description: `Everything we have written about ${context.pageTypeName.toLowerCase()}.`,
+    }),
+  );
 
   const contentPageId = await PublishRepository.upsertPublishedPage({
     projectId: context.projectId,
@@ -355,31 +339,33 @@ async function publishPost(input: {
   }
 
   const resolved = await requireAdapter(context);
-  const created = await resolved.adapter.createPost({
-    article: {
-      slug: context.slug,
-      title: context.title,
-      description: context.description,
-      date: context.date,
-      category: context.pageTypeName,
-      keyword: context.keyword,
-      markdown: article.content ?? "",
-      path: context.path,
-    },
-    hub:
-      input.hub.ref && input.hub.path
-        ? {
-            name: context.pageTypeName,
-            path: input.hub.path,
-            ref: input.hub.ref,
-          }
-        : null,
-    links: input.targets.map((target) => ({
-      fromPath: target.path,
-      toPath: context.path,
-      anchor: input.anchor,
-    })),
-  });
+  const created = await recordingAuthFailure(context.projectId, () =>
+    resolved.adapter.createPost({
+      article: {
+        slug: context.slug,
+        title: context.title,
+        description: context.description,
+        date: context.date,
+        category: context.pageTypeName,
+        keyword: context.keyword,
+        markdown: article.content ?? "",
+        path: context.path,
+      },
+      hub:
+        input.hub.ref && input.hub.path
+          ? {
+              name: context.pageTypeName,
+              path: input.hub.path,
+              ref: input.hub.ref,
+            }
+          : null,
+      links: input.targets.map((target) => ({
+        fromPath: target.path,
+        toPath: context.path,
+        anchor: input.anchor,
+      })),
+    }),
+  );
 
   // Stored the moment it exists, in its own write, before anything else can
   // fail: the ref is worthless as an idempotency guard if it only lands at the
@@ -492,8 +478,14 @@ async function commitPublished(input: {
 /**
  * Hand an approved article to the publish workflow.
  *
- * The instance id is the article id, so a double click is a duplicate-instance
- * error from the workflow engine rather than two runs racing toward two posts.
+ * A fresh instance id per attempt, and the article row is the lock. Workflow
+ * instance ids are permanent — an id a completed run used is refused for the
+ * whole retention period — so reusing the article id would mean that once any
+ * publish had ever run for an article, no later one could start: every retry
+ * of a draft the preflight sent back to review would report "already
+ * publishing" and do nothing. `claimForPublishing`'s CAS is the authoritative
+ * guard against two runs anyway, and it is the row this reads.
+ *
  * The connection is checked here only to fail fast for the UI — preflight
  * checks it again, because a connection can be deleted between this call and
  * the step that would use it.
@@ -510,6 +502,9 @@ async function startPublish(input: {
   if (article.status === "published") {
     throw new AppError("CONFLICT", "This article is already published.");
   }
+  if (article.status === "publishing") {
+    return { articleId: input.articleId, alreadyPublishing: true };
+  }
   const run = { slug: article.slug ?? slugify(article.keyword) };
   if (!(await resolvePublishAdapter(input.projectId, run))) {
     throw new AppError(
@@ -518,16 +513,14 @@ async function startPublish(input: {
     );
   }
 
-  try {
-    await env.PUBLISH_WORKFLOW.create({
-      id: input.articleId,
-      params: { articleId: input.articleId, projectId: input.projectId },
-    });
-  } catch {
-    // A duplicate instance id means this article's publish is already in
-    // flight, which is the answer the caller wants rather than an error.
-    return { articleId: input.articleId, alreadyPublishing: true };
-  }
+  // Not caught: a binding error or an engine quota rejection reported as "a
+  // publish is already running" is a lie the caller acts on — the panel toasts
+  // "Publishing started" and the unattended loop logs a publish that never
+  // happened.
+  await env.PUBLISH_WORKFLOW.create({
+    id: crypto.randomUUID(),
+    params: { articleId: input.articleId, projectId: input.projectId },
+  });
   return { articleId: input.articleId, alreadyPublishing: false };
 }
 
@@ -548,11 +541,49 @@ async function requireAdapter(context: PublishContext) {
   return resolved;
 }
 
+/**
+ * One adapter write, with a rejected credential written down where the loop
+ * can find it.
+ *
+ * `publish_connections.status` is the single definition of "this connection is
+ * broken": the autopilot kill switch reads it and pauses immediately, and
+ * Settings renders it beside `lastCheckedAt`. It used to have exactly one
+ * writer — the manual "Test connection" button — so an unattended publish that
+ * met a 401 recorded nothing, paused nothing, and the loop went on presenting
+ * a revoked credential (spec 0025: "any adapter auth error pauses immediately
+ * — a wrong credential retried unattended is how accounts get locked").
+ *
+ * Inside the step body rather than around it. Workflows replay each step in
+ * its own invocation, so an AppError caught outside the step is no longer an
+ * AppError, and `asAppError` cannot rebuild one from an adapter message like
+ * "WordPress returned 401." Only the auth code is recorded: an unreachable
+ * host is a network fact, and marking the connection failed for one timeout
+ * would pause a project for its ISP.
+ */
+async function recordingAuthFailure<T>(
+  projectId: string,
+  call: () => Promise<T>,
+): Promise<T> {
+  try {
+    return await call();
+  } catch (error) {
+    if (error instanceof AppError && error.code === "PUBLISH_AUTH_FAILED") {
+      await PublishConnectionRepository.setStatus({
+        projectId,
+        status: "failed",
+        lastCheckedAt: new Date().toISOString(),
+      });
+    }
+    throw error;
+  }
+}
+
 export const PublishService = {
   startPublish,
   describeRun,
   preflight,
   landBlocked,
+  landCrashed,
   ensureHub,
   publishPost,
   upsertManifestPage,

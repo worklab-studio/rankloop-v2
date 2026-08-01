@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  AUTOPILOT_PROPOSAL_FAIL_LIMIT,
   AUTOPILOT_PUBLISH_CAP,
   AUTOPILOT_WRITE_CAP,
 } from "@/shared/rankloop-autopilot";
@@ -71,6 +72,7 @@ describe("unattendedCapsCopy", () => {
     const copy = unattendedCapsCopy();
     expect(copy).toContain(`writes ${AUTOPILOT_WRITE_CAP}`);
     expect(copy).toContain(`publishes ${AUTOPILOT_PUBLISH_CAP}`);
+    expect(copy).toContain(`${AUTOPILOT_PROPOSAL_FAIL_LIMIT} failed drafts`);
   });
 
   it("names the quota for approvals rather than claiming a number of its own", () => {

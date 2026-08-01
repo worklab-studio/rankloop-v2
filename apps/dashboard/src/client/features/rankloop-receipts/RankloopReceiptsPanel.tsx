@@ -5,7 +5,9 @@ import {
   decidedByLabel,
   formatClicksDelta,
   formatReceiptPosition,
+  receiptAdjustedClicksDelta,
   receiptClicksDelta,
+  receiptClicksTone,
   receiptStatusDisplay,
 } from "@/client/features/rankloop-receipts/receiptDisplay.logic";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
@@ -80,6 +82,12 @@ function ReceiptsLoadingState() {
 
 function ReceiptRowCells({ row }: { row: ReceiptRow }) {
   const delta = receiptClicksDelta(row.baseline, row.result);
+  const adjusted = receiptAdjustedClicksDelta(row.result);
+  // The second line appears only when the site-wide trend actually moved the
+  // answer. A window with nothing to drift against (a zero-click site or page
+  // baseline) leaves the adjustment equal to the raw count, and printing the
+  // same number twice is how a screen teaches people to stop reading it.
+  const showAdjusted = adjusted !== null && adjusted !== delta;
   return (
     <tr>
       <td>
@@ -116,17 +124,14 @@ function ReceiptRowCells({ row }: { row: ReceiptRow }) {
         </span>
       </td>
       <td
-        className={`text-right tabular-nums ${
-          delta === null
-            ? "text-base-content/40"
-            : delta > 0
-              ? "text-success"
-              : delta < 0
-                ? "text-error"
-                : ""
-        }`}
+        className={`text-right tabular-nums ${receiptClicksTone(delta, adjusted)}`}
       >
         {formatClicksDelta(delta)}
+        {showAdjusted ? (
+          <span className="block text-[11px] font-normal text-base-content/50">
+            {formatClicksDelta(adjusted)} adjusted
+          </span>
+        ) : null}
       </td>
     </tr>
   );
@@ -179,9 +184,14 @@ export function RankloopReceiptsPanel({ projectId }: { projectId: string }) {
           </table>
         </div>
       )}
+      {/* Names which number carries the adjustment. The old wording —
+          "results trend-adjusted against your site" — was true of nothing on
+          screen: the clicks cell printed the raw delta and the positions are
+          weighted but never drift-corrected, so the one screen whose job is
+          honesty was over-claiming in its own footer. */}
       <p className="border-t border-base-300 px-4 py-3 text-[11px] text-base-content/45">
-        positions are impressions-weighted · results trend-adjusted against your
-        site
+        positions are impressions-weighted · adjusted clicks divide out your
+        site-wide trend
       </p>
     </div>
   );

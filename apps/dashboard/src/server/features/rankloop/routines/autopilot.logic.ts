@@ -234,6 +234,17 @@ function isNeverAutopilot(actionType: string): boolean {
  *  reject and a machine that would keep paying for it. */
 const AUTOPILOT_GATE_FAILURE_LIMIT = 3;
 
+/**
+ * Consecutive drafts that died before any law could grade them.
+ *
+ * Counted apart from the gate streak, and at the same threshold, because the
+ * two say different things and one of them must not be blamed for the other:
+ * a truncated generation or a 502 is the writer's incident, not evidence that
+ * the laws are rejecting this project's work. Both cost the same money, which
+ * is why both have a ceiling.
+ */
+const AUTOPILOT_WRITER_FAILURE_LIMIT = 3;
+
 /** One gate verdict, newest first in the array the caller passes. */
 export type GateOutcome = { at: string; passed: boolean };
 
@@ -261,14 +272,26 @@ export function autopilotKillSwitch(input: {
    *  `autopilot_state.consecutive_gate_failures`. Omitted by callers reading
    *  the whole history, which is the same thing as a prior of nothing. */
   priorGateFailures?: number;
+  /** Drafts that never reached a law, newest first. Optional so a caller with
+   *  nothing to say about the writer says nothing rather than a zero. */
+  recentWriterOutcomes?: GateOutcome[];
+  priorWriterFailures?: number;
 }): AutopilotPause | null {
   if (input.adapterAuthError) {
     return authPause(input.adapterAuthError);
   }
-  return autopilotGateStreak({
-    priorFailures: input.priorGateFailures ?? 0,
-    recentGateOutcomes: input.recentGateOutcomes,
-  }).pause;
+  // Gate first: when both streaks are live, the one that names a cause the
+  // user can act on is the more useful sentence to print.
+  return (
+    autopilotGateStreak({
+      priorFailures: input.priorGateFailures ?? 0,
+      recentGateOutcomes: input.recentGateOutcomes,
+    }).pause ??
+    autopilotWriterStreak({
+      priorFailures: input.priorWriterFailures ?? 0,
+      recentWriterOutcomes: input.recentWriterOutcomes ?? [],
+    }).pause
+  );
 }
 
 /** The pause a rejected credential earns, phrased the same way wherever it is
@@ -297,30 +320,75 @@ export function autopilotGateStreak(input: {
   /** Newest first, the order the repository returns them in. */
   recentGateOutcomes: GateOutcome[];
 }): { consecutiveGateFailures: number; pause: AutopilotPause | null } {
+  const folded = foldStreak({
+    priorFailures: input.priorFailures,
+    outcomes: input.recentGateOutcomes,
+    limit: AUTOPILOT_GATE_FAILURE_LIMIT,
+    reason: `autopilot paused — ${AUTOPILOT_GATE_FAILURE_LIMIT} drafts in a row failed the gate`,
+  });
+  return {
+    consecutiveGateFailures: folded.failures,
+    pause: folded.pause,
+  };
+}
+
+/**
+ * The same fold over the drafts that never reached a law.
+ *
+ * Its own counter and its own sentence, rather than a second way into the
+ * gate's: "3 drafts in a row failed the gate" sends the operator to the law
+ * report, and there is no law report — the article was truncated, or the
+ * provider answered 502, or the frontmatter came back unreadable. The two
+ * streaks reset independently for the same reason: a draft that reaches the
+ * gate is evidence the writer is working, whatever the gate then says.
+ */
+export function autopilotWriterStreak(input: {
+  priorFailures: number;
+  /** Newest first. `passed` is "this draft reached a law", not "the laws
+   *  liked it" — a graded fail is a working writer. */
+  recentWriterOutcomes: GateOutcome[];
+}): { consecutiveWriterFailures: number; pause: AutopilotPause | null } {
+  const folded = foldStreak({
+    priorFailures: input.priorFailures,
+    outcomes: input.recentWriterOutcomes,
+    limit: AUTOPILOT_WRITER_FAILURE_LIMIT,
+    reason: `autopilot paused — ${AUTOPILOT_WRITER_FAILURE_LIMIT} drafts in a row never reached the gate`,
+  });
+  return {
+    consecutiveWriterFailures: folded.failures,
+    pause: folded.pause,
+  };
+}
+
+/** The counting both streaks share. Written once because the two differ only
+ *  in what they count and what they say — and a second copy is how the
+ *  watermark semantics start disagreeing between them. */
+function foldStreak(input: {
+  priorFailures: number;
+  outcomes: GateOutcome[];
+  limit: number;
+  reason: string;
+}): { failures: number; pause: AutopilotPause | null } {
   const streak: GateOutcome[] = [];
   let broken = false;
-  for (const outcome of input.recentGateOutcomes) {
+  for (const outcome of input.outcomes) {
     if (outcome.passed) {
       broken = true;
       break;
     }
     streak.push(outcome);
   }
-  const consecutiveGateFailures =
-    streak.length + (broken ? 0 : input.priorFailures);
+  const failures = streak.length + (broken ? 0 : input.priorFailures);
   // A trip is an event, so it needs a verdict to have caused it. An empty
   // window over a stored 3 is not a new pause — it is the pause already
   // written on the row, and re-raising it here would re-date it every run.
-  if (
-    consecutiveGateFailures < AUTOPILOT_GATE_FAILURE_LIMIT ||
-    streak.length === 0
-  ) {
-    return { consecutiveGateFailures, pause: null };
+  if (failures < input.limit || streak.length === 0) {
+    return { failures, pause: null };
   }
   return {
-    consecutiveGateFailures,
+    failures,
     pause: {
-      reason: `autopilot paused — ${AUTOPILOT_GATE_FAILURE_LIMIT} drafts in a row failed the gate`,
+      reason: input.reason,
       // The oldest failure this window can see: the streak started at or
       // before it, and stamping the pause with the newest failure would date
       // it to the moment we noticed rather than the moment it went wrong.

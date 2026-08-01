@@ -3,7 +3,9 @@ import {
   decidedByLabel,
   formatClicksDelta,
   formatReceiptPosition,
+  receiptAdjustedClicksDelta,
   receiptClicksDelta,
+  receiptClicksTone,
   receiptStatusDisplay,
 } from "./receiptDisplay.logic";
 
@@ -68,5 +70,54 @@ describe("formatClicksDelta", () => {
     expect(formatClicksDelta(-3)).toBe("-3");
     expect(formatClicksDelta(0)).toBe("0");
     expect(formatClicksDelta(null)).toBe("—");
+  });
+});
+
+describe("receiptAdjustedClicksDelta", () => {
+  it("rounds the stored two-decimal float to whole clicks", () => {
+    expect(receiptAdjustedClicksDelta({ adjustedClicksDelta: 13.44 })).toBe(13);
+    expect(receiptAdjustedClicksDelta({ adjustedClicksDelta: -0.4 })).toBe(0);
+    expect(
+      formatClicksDelta(
+        receiptAdjustedClicksDelta({
+          adjustedClicksDelta: -0.4,
+        }),
+      ),
+    ).toBe("0");
+  });
+
+  it("is null when there is no result, or no delta to adjust", () => {
+    expect(receiptAdjustedClicksDelta(null)).toBeNull();
+    expect(
+      receiptAdjustedClicksDelta({ adjustedClicksDelta: null }),
+    ).toBeNull();
+  });
+});
+
+describe("receiptClicksTone", () => {
+  // The defect this pins: a +80 raw delta in a window where the whole site
+  // rose 80% is drift, not a win. The panel coloured that cell success green
+  // off the raw sign while the digest, reading the same receipt's adjusted
+  // delta, called it "no measurable change".
+  it("refuses a win the trend adjustment took back", () => {
+    expect(receiptClicksTone(80, 0)).toBe("");
+  });
+
+  it("calls a loss the adjustment uncovers under a flat raw delta", () => {
+    expect(receiptClicksTone(0, -12)).toBe("text-error");
+  });
+
+  it("reads the adjusted delta, not the raw one, when they agree", () => {
+    expect(receiptClicksTone(30, 24)).toBe("text-success");
+    expect(receiptClicksTone(-9, -7)).toBe("text-error");
+  });
+
+  it("falls back to the raw sign only when nothing anchored an adjustment", () => {
+    expect(receiptClicksTone(15, null)).toBe("text-success");
+    expect(receiptClicksTone(-15, null)).toBe("text-error");
+  });
+
+  it("stays muted while the receipt has nothing to compare", () => {
+    expect(receiptClicksTone(null, null)).toBe("text-base-content/40");
   });
 });

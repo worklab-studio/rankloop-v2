@@ -172,6 +172,14 @@ async function recordMetrics(context: StudyContext): Promise<boolean> {
 // Step 3 — top-earning pages
 // ---------------------------------------------------------------------------
 
+/** What the top-pages step hands the summarize step: the measured pages, and
+ *  whether the etv window filled up — a saturated window means "the top 100",
+ *  not "everything they have", and only the summarize step cares. */
+type TopPagesStudy = {
+  pages: SnapshotPage[];
+  windowSaturated: boolean;
+};
+
 /**
  * The competitor's pages that actually earn traffic, filtered to the shapes
  * that carry content — a pricing page ranking for the brand name teaches
@@ -179,12 +187,12 @@ async function recordMetrics(context: StudyContext): Promise<boolean> {
  * has no earning cohort and the summarize step says so honestly instead of
  * inventing one.
  */
-async function studyTopPages(context: StudyContext): Promise<SnapshotPage[]> {
+async function studyTopPages(context: StudyContext): Promise<TopPagesStudy> {
   if (!hasDataforseoKey()) {
     console.info(
       `[competitors] ${context.domain} top pages skipped — no DataForSEO key`,
     );
-    return [];
+    return { pages: [], windowSaturated: false };
   }
 
   const client = createDataforseoClient(systemBillingCustomer(context));
@@ -217,7 +225,13 @@ async function studyTopPages(context: StudyContext): Promise<SnapshotPage[]> {
     rows,
     new Date().toISOString(),
   );
-  return rows.map((row) => ({ url: row.url, etv: row.etv }));
+  return {
+    pages: rows.map((row) => ({ url: row.url, etv: row.etv })),
+    // Saturation is measured on the rows Labs returned, before the shape
+    // filter: a competitor with 100 earners of which 40 are taxonomy pages
+    // still has an unread tail.
+    windowSaturated: page.items.length >= TOP_PAGES_LIMIT,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -294,6 +308,9 @@ async function summarize(input: {
   crawled: CrawledFeature[];
   coverage: "full" | "sitemap_only";
   current: SnapshotPage[];
+  /** Whether `current` is the whole earning inventory or just the top of it —
+   *  see the removal guard below. */
+  windowSaturated: boolean;
 }): Promise<{ pagesStudied: number }> {
   const cohort = (name: "winner" | "sample"): StructuralFeatures[] =>
     input.crawled.flatMap((result) =>
@@ -334,11 +351,20 @@ async function summarize(input: {
       diff.decayed,
       "decayed",
     );
-    await CompetitorsRepository.setPageStatuses(
-      input.context.competitorId,
-      diff.removed,
-      "removed",
-    );
+    // Same principle one step further in: `current` is the top 100 by etv, so
+    // when that window filled up, a prior page missing from it may simply have
+    // slipped to rank 101 — live, indexed, and about to be reported to the
+    // founder as a page the competitor deleted. `prior` is the union of every
+    // window ever stored and only grows, so the misjudged population grows
+    // with it. Below the limit the list is exhaustive and absence really is
+    // evidence, which is exactly where removal keeps working.
+    if (!input.windowSaturated) {
+      await CompetitorsRepository.setPageStatuses(
+        input.context.competitorId,
+        diff.removed,
+        "removed",
+      );
+    }
   }
 
   await CompetitorsRepository.updateCompetitor(input.context.competitorId, {

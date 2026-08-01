@@ -178,19 +178,48 @@ async function proposeTypes(input: { projectId: string }): Promise<{
       row.wordCount === null ? [] : [row.wordCount],
     ),
   );
-  // A type the user already ruled on is theirs: approved rows are never
-  // touched, and a row somebody declined by hand stays declined however
-  // strongly this run would re-propose it.
-  const decided = new Set(
+  // A type the user already ruled on is theirs, but the two rulings mean
+  // different things to this loop: a hand-declined row stays declined however
+  // strongly this run would re-propose it, while an approved row is never
+  // re-written yet still owns whatever keywords the shape has picked up since.
+  const approvedByName = new Map(
     existing
-      .filter((row) => row.status === "approved" || row.decidedAt !== null)
+      .filter((row) => row.status === "approved")
+      .map((row) => [row.name, row]),
+  );
+  const userDeclined = new Set(
+    existing
+      .filter((row) => row.status !== "approved" && row.decidedAt !== null)
       .map((row) => row.name),
   );
 
   const entries: PlanCandidateEntry[] = [];
   const written: string[] = [];
   for (const candidate of candidates) {
-    if (decided.has(candidate.name)) continue;
+    if (userDeclined.has(candidate.name)) continue;
+    const approved = approvedByName.get(candidate.name);
+    if (approved) {
+      // This is the repair decidePageType promises when it says "the next
+      // recompute repairs its counts". The row is left exactly as the user
+      // approved it — no upsert, no SERP entry, not in `written` — but the
+      // keywords admitted since approval are bound, or the flywheel's output
+      // never reaches the writer. The bind only claims unclaimed 'discovered'
+      // rows, so re-running it is free.
+      await PagePlanRepository.bindKeywordsToPageType({
+        projectId: input.projectId,
+        pageTypeId: approved.id,
+        keywordIds: candidate.instances.map((row) => row.id),
+      });
+      // instanceCount is read back from the bound rows, never accumulated, so
+      // a retry of this FREE_IDEMPOTENT step lands the same number. `demand`
+      // is deliberately untouched: on a top-up the candidate holds only the
+      // newly admitted rows, and writing its demand would replace the type's
+      // total with the increment and reorder the tab.
+      await PagePlanRepository.updatePageType(approved.id, {
+        instanceCount: await PagePlanRepository.countBoundKeywords(approved.id),
+      });
+      continue;
+    }
     const pageTypeId = await writeCandidate({
       projectId: input.projectId,
       candidate,

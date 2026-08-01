@@ -15,6 +15,7 @@ const mocks = vi.hoisted(() => ({
   },
   repo: {
     countCommittedNetNew: vi.fn(),
+    countNetNewApprovedSince: vi.fn(),
     getWritableNetNewProposals: vi.fn(),
     getReviewArticles: vi.fn(),
   },
@@ -145,6 +146,7 @@ beforeEach(() => {
   mocks.autopilot.reconcile.mockResolvedValue(null);
   mocks.autopilot.getStatus.mockResolvedValue(statusOf());
   mocks.repo.countCommittedNetNew.mockResolvedValue(0);
+  mocks.repo.countNetNewApprovedSince.mockResolvedValue(0);
   mocks.repo.getWritableNetNewProposals.mockResolvedValue([]);
   mocks.repo.getReviewArticles.mockResolvedValue([]);
   mocks.proposals.getProposals.mockResolvedValue([]);
@@ -252,6 +254,44 @@ describe("runAutopilot — the caps", () => {
     ]);
   });
 
+  it("spends the throttle's cap once a day, not once a wake", async () => {
+    // The same throttled project, fifteen minutes later: one net-new is
+    // already approved today. The cap is a day's ceiling ("posts net-new may
+    // propose today"), and a counter that started at zero each wake would let
+    // 96 wakes approve 96 of them.
+    mocks.repo.countNetNewApprovedSince.mockResolvedValue(1);
+    mocks.netNew.getWritingQuota.mockResolvedValue({
+      owed: 3,
+      outstanding: 0,
+      slots: 1,
+      reason: null,
+      throttle: {
+        cap: 1,
+        reason: "quota held at 1 — 52% of recent posts are indexed",
+      },
+      exclusions: [],
+    });
+    mocks.proposals.getProposals.mockResolvedValue([
+      proposal("proposal_2", "write_new"),
+      proposal("proposal_3", "retitle", "optimize"),
+    ]);
+
+    const result = await run();
+
+    // Optimize still flows: a site Google is not indexing is exactly the site
+    // that should keep improving the pages it already has.
+    expect(result.decisions.map((decision) => decision.id)).toEqual([
+      "proposal_3",
+    ]);
+    expect(reasons(result, "approve")).toEqual([
+      "quota held at 1 — 52% of recent posts are indexed",
+    ]);
+    expect(mocks.repo.countNetNewApprovedSince).toHaveBeenCalledWith(
+      PROJECT,
+      "2026-08-01T00:00:00.000Z",
+    );
+  });
+
   it("asks for at most two drafts and two publishes a run", async () => {
     mocks.repo.getWritableNetNewProposals.mockResolvedValue([
       { id: "proposal_1", target: "keyword one" },
@@ -272,6 +312,23 @@ describe("runAutopilot — the caps", () => {
     expect(mocks.write.startArticle).toHaveBeenCalledTimes(2);
     expect(mocks.publish.startPublish).toHaveBeenCalledTimes(2);
     expect(reasons(result, "publish")).toEqual(["2 per run is the cap"]);
+  });
+
+  it("stops paying for a proposal whose drafts keep dying before review", async () => {
+    mocks.repo.getWritableNetNewProposals.mockResolvedValue([
+      { id: "proposal_1", target: "keyword one", failedArticles: 2 },
+      { id: "proposal_2", target: "keyword two", failedArticles: 1 },
+    ]);
+
+    const result = await run();
+
+    expect(mocks.write.startArticle).toHaveBeenCalledTimes(1);
+    expect(mocks.write.startArticle).toHaveBeenCalledWith(
+      expect.objectContaining({ proposalId: "proposal_2" }),
+    );
+    expect(reasons(result, "write")).toEqual([
+      "keyword one: 2 drafts failed before reaching review — it needs a human",
+    ]);
   });
 
   it("records the in-flight guard as a refusal instead of a second draft", async () => {

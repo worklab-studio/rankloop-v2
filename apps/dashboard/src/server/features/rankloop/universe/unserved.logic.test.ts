@@ -107,6 +107,18 @@ describe("selectUnservedQueries", () => {
     expect(candidate.bestPosition).toBe(30);
   });
 
+  it("leaves a cluster alone when any phrasing of it is already top-10", () => {
+    // Both phrasings normalize to "breville descale", so one page answers
+    // both. Judging the sibling on its own would propose a second page that
+    // cannibalizes the one already ranking sixth.
+    expect(
+      select([
+        agg("how to descale a breville", 400, 6),
+        agg("how do i descale a breville", 60, 22),
+      ]),
+    ).toEqual([]);
+  });
+
   it("skips a query whose words are all function words", () => {
     // An empty token set would collect every such query into one meaningless
     // row keyed on the empty string.

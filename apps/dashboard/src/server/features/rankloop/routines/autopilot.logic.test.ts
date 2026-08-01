@@ -3,6 +3,7 @@ import {
   autopilotEligibility,
   autopilotGateStreak,
   autopilotKillSwitch,
+  autopilotWriterStreak,
   resolveActionBehavior,
   type AutopilotEligibility,
   type GateOutcome,
@@ -339,6 +340,41 @@ describe("autopilotGateStreak", () => {
     // The count stands; the pause it caused is already on the row, and
     // re-raising it here would re-date it on every run.
     expect(streak.consecutiveGateFailures).toBe(3);
+    expect(streak.pause).toBeNull();
+  });
+});
+
+describe("autopilotWriterStreak", () => {
+  it("pauses on three drafts that never reached a law, in its own words", () => {
+    const streak = autopilotWriterStreak({
+      priorFailures: 0,
+      recentWriterOutcomes: [
+        gate("2026-08-01T09:00:00.000Z", false),
+        gate("2026-07-31T09:00:00.000Z", false),
+        gate("2026-07-30T09:00:00.000Z", false),
+      ],
+    });
+
+    expect(streak.consecutiveWriterFailures).toBe(3);
+    expect(streak.pause).toEqual({
+      reason: "autopilot paused — 3 drafts in a row never reached the gate",
+      since: "2026-07-30T09:00:00.000Z",
+    });
+  });
+
+  it("counts a graded draft as the streak ending, whatever the gate said", () => {
+    // `passed` here means the draft reached a law. A writer whose output the
+    // laws reject is a working writer, and the gate's own streak is what
+    // judges that.
+    const streak = autopilotWriterStreak({
+      priorFailures: 2,
+      recentWriterOutcomes: [
+        gate("2026-08-01T09:00:00.000Z", false),
+        gate("2026-08-01T08:00:00.000Z", true),
+      ],
+    });
+
+    expect(streak.consecutiveWriterFailures).toBe(1);
     expect(streak.pause).toBeNull();
   });
 });

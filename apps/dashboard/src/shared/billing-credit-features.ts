@@ -8,7 +8,8 @@ export type CreditFeature =
   | "ai_prompt_responses"
   | "local_seo"
   | "onboarding"
-  | "agent";
+  | "agent"
+  | "writer";
 
 const CREDIT_FEATURE_LABELS: Record<string, string> = {
   keyword_research: "Keyword Research",
@@ -22,6 +23,7 @@ const CREDIT_FEATURE_LABELS: Record<string, string> = {
   local_seo: "Local SEO",
   onboarding: "Onboarding",
   agent: "SAM Agent",
+  writer: "Article Writer",
 };
 
 /**

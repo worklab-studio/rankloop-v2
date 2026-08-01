@@ -1,5 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { z } from "zod";
+import { beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 
 // Preflight and the create, which are the two steps the three rules live in:
 // nothing publishes that has not passed the laws, and nothing creates a second
@@ -32,6 +31,11 @@ const mocks = vi.hoisted(() => ({
   receipts: { openReceipt: vi.fn() },
   resolve: { resolvePublishAdapter: vi.fn() },
   autopilot: { getActionBehavior: vi.fn() },
+  // Typed to the one field these tests read back: the instance id, which is
+  // the whole point of the retry fix.
+  workflow: {
+    create: vi.fn<(input: { id: string; params: unknown }) => Promise<void>>(),
+  },
 }));
 
 vi.mock("cloudflare:workers", () => ({ env: {} }));
@@ -146,11 +150,19 @@ async function service() {
   return PublishService;
 }
 
-beforeEach(() => {
-  vi.resetModules();
-  for (const group of Object.values(mocks)) {
+/** Every mock above, reset. A named parameter rather than an inline walk
+ *  because the groups are no longer uniform — `workflow.create` is typed to
+ *  the field these tests read back — and a union of group shapes widens
+ *  `Object.values` to `any`. */
+function resetMocks(groups: Record<string, Record<string, Mock>>): void {
+  for (const group of Object.values(groups)) {
     for (const mock of Object.values(group)) mock.mockReset();
   }
+}
+
+beforeEach(() => {
+  vi.resetModules();
+  resetMocks(mocks);
   mocks.articles.getArticleById.mockResolvedValue(article());
   mocks.articles.updateArticle.mockResolvedValue(undefined);
   mocks.projects.getProjectById.mockResolvedValue({
@@ -215,18 +227,6 @@ function refusal(result: { ok: boolean } | { ok: false; blocked: unknown }): {
     reason: String(blocked.reason),
     detail: String(blocked.detail),
   };
-}
-
-/** The stored law report, parsed. Validated at the boundary so the assertions
- *  below read fields rather than poking at `any`. */
-const lawReportShape = z.object({
-  passed: z.boolean(),
-  laws: z.array(z.unknown()),
-  failure: z.unknown(),
-});
-
-function lawReport(raw: string | undefined) {
-  return lawReportShape.parse(JSON.parse(raw ?? "null"));
 }
 
 describe("preflight — nothing publishes that has not passed the laws", () => {
@@ -439,39 +439,5 @@ describe("preflight — the connection", () => {
     expect(result.ok).toBe(true);
     expect(mocks.gate.gate).not.toHaveBeenCalled();
     expect(mocks.publishRepo.claimForPublishing).not.toHaveBeenCalled();
-  });
-});
-
-describe("landBlocked", () => {
-  it("returns the article to review with the reason, keeping the green checklist", async () => {
-    await (
-      await service()
-    ).landBlocked({
-      ...INPUT,
-      blocked: { reason: "not_connected", detail: "Connect a target." },
-    });
-
-    const [, update] = mocks.articles.updateArticle.mock.calls[0];
-    expect(update.status).toBe("review");
-    // The green checklist survives the block: the report keeps its passing
-    // laws and gains a failure that names why publishing stopped.
-    const report = lawReport(update.lawReportJson);
-    expect(report.passed).toBe(true);
-    expect(report.laws).toHaveLength(1);
-    expect(report.failure).toEqual({
-      reason: "publish_blocked",
-      detail: "Connect a target.",
-    });
-  });
-
-  it("does not touch an article that was refused for being published already", async () => {
-    await (
-      await service()
-    ).landBlocked({
-      ...INPUT,
-      blocked: { reason: "already_published", detail: "Already published." },
-    });
-
-    expect(mocks.articles.updateArticle).not.toHaveBeenCalled();
   });
 });

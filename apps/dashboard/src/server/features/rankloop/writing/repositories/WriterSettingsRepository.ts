@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
-import { writerSettings } from "@/db/schema";
+import { projects, writerSettings } from "@/db/schema";
 
 /**
  * The writer dials, or null when the project has never saved any.
@@ -23,17 +23,30 @@ async function getSettings(projectId: string) {
  *  per project that has saved settings — so the daily block reads it whole
  *  and does its due-set arithmetic in memory. */
 async function getAllSettings(projectId?: string) {
-  const rows = db
+  return db
     .select({
       projectId: writerSettings.projectId,
       postsPerDay: writerSettings.postsPerDay,
       catchupCap: writerSettings.catchupCap,
       quotaStartDate: writerSettings.quotaStartDate,
     })
-    .from(writerSettings);
-  // `projectId` narrows the same read to one project — the per-project
-  // dispatcher does the identical arithmetic the sweep does, over one row.
-  return projectId ? rows.where(eq(writerSettings.projectId, projectId)) : rows;
+    .from(writerSettings)
+    .innerJoin(projects, eq(projects.id, writerSettings.projectId))
+    .where(
+      and(
+        // Archiving is a soft delete that cascades to nothing: the settings
+        // row survives it with the quota still on, and net-new reads no
+        // project row of its own. Without this join the writer keeps
+        // proposing into a project the tenant deleted.
+        isNull(projects.archivedAt),
+        // `projectId` narrows the same read to one project — the per-project
+        // dispatcher does the identical arithmetic the sweep does, over one
+        // row. It narrows beside the archived predicate rather than replacing
+        // it: that dispatcher is the project's own alarm, and on self-host it
+        // is the only one there is.
+        projectId ? eq(writerSettings.projectId, projectId) : undefined,
+      ),
+    );
 }
 
 /**

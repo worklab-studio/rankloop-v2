@@ -60,6 +60,25 @@ async function unattendedBlockedReason(input: {
   return `Autopilot has not earned this action yet — ${earned.fallbackReason ?? "it is not eligible"}. Approve this draft to publish it.`;
 }
 
+/**
+ * The status a *resuming* run may re-take an article from — the two a human
+ * can leave it in, plus the `failed` a crashed run landed it in.
+ *
+ * A resume skips the dial entirely (the post exists, so it was judged on the
+ * run that created it), but it still has to own the row: the publish commit is
+ * a compare-and-set on `publishing`, so a run that finished a crashed one
+ * without re-claiming would flip nothing. Anything outside these three belongs
+ * to somebody else — the writer, the agent, another publish — and a resume is
+ * not a reason to take it.
+ */
+export function resumeClaimStatus(
+  status: string,
+): "approved" | "review" | "failed" | null {
+  return status === "approved" || status === "review" || status === "failed"
+    ? status
+    : null;
+}
+
 type PublishClaim =
   | { ok: true; claimFrom: "approved" | "review" }
   | { ok: false; detail: string };

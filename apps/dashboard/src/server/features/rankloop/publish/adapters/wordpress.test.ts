@@ -330,6 +330,28 @@ describe("WordPress adapter getPost and updatePost", () => {
     ).resolves.toBeNull();
   });
 
+  it("never hands back a render as if it were the source", async () => {
+    // The shape a hardened site actually returns: context=edit answered, but
+    // filtered back down to the render. Merging into that and writing it back
+    // would replace the user's shortcodes and block comments with their own
+    // one-time expansion, on a live post, silently.
+    fetchMock.mockResolvedValueOnce(
+      jsonResponse([
+        {
+          id: 42,
+          link: "https://x/",
+          content: { rendered: "<p>Expanded gallery.</p>" },
+        },
+      ]),
+    );
+
+    await expect(
+      createWordPressAdapter(config).getPost("/blog/tampers/"),
+    ).resolves.toBeNull();
+    // Declining means declining: no write may follow the read.
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+  });
+
   it("writes back only the body it was handed, and touches no other field", async () => {
     fetchMock.mockResolvedValueOnce(jsonResponse({ id: 42 }));
 

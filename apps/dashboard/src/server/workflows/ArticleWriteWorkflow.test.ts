@@ -56,6 +56,12 @@ vi.mock("@/server/lib/openrouter", () => ({
 vi.mock("@/server/lib/runtime-env", () => ({
   getOptionalEnvValue: (name: string) => Promise.resolve(mocks.env.get(name)),
   getRequiredEnvValue: (name: string) => Promise.resolve(mocks.env.get(name)),
+  // Read off the same map rather than pinned false: the writer meters its
+  // generation against the credit pool only in hosted mode, and this fixture
+  // sets no AUTH_MODE — a self-hosted deployment with its own key, which is
+  // the world every case below is written in.
+  isHostedServerAuthMode: () =>
+    Promise.resolve(mocks.env.get("AUTH_MODE") === "hosted"),
 }));
 vi.mock(
   "@/server/features/rankloop/writing/repositories/ArticleRepository",

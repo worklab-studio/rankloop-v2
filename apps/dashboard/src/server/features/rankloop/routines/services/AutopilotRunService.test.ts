@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
   },
   repo: {
     countCommittedNetNew: vi.fn(),
+    countNetNewApprovedSince: vi.fn(),
     getWritableNetNewProposals: vi.fn(),
     getReviewArticles: vi.fn(),
   },
@@ -142,6 +143,7 @@ beforeEach(() => {
   mocks.autopilot.reconcile.mockResolvedValue(null);
   mocks.autopilot.getStatus.mockResolvedValue(statusOf());
   mocks.repo.countCommittedNetNew.mockResolvedValue(0);
+  mocks.repo.countNetNewApprovedSince.mockResolvedValue(0);
   mocks.repo.getWritableNetNewProposals.mockResolvedValue([]);
   mocks.repo.getReviewArticles.mockResolvedValue([]);
   mocks.proposals.getProposals.mockResolvedValue([]);

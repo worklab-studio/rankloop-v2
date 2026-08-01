@@ -4,8 +4,10 @@ import {
   desc,
   eq,
   gt,
+  gte,
   inArray,
   isNotNull,
+  isNull,
   ne,
   notExists,
   sql,
@@ -14,6 +16,7 @@ import { db } from "@/db";
 import {
   articles,
   autopilotState,
+  projects,
   proposals,
   publishConnections,
   receipts,
@@ -98,12 +101,13 @@ async function getRecentGateVerdicts(projectId: string, since?: string) {
 /**
  * The publish connection when its last check failed.
  *
- * A failed "Test connection" is where a rejected credential is durably
- * recorded — the adapters throw PUBLISH_AUTH_FAILED at the call site and
- * nothing persists the throw. A connection that failed for some other reason
- * trips the same switch, which errs toward pausing: for the one mode that
- * publishes without asking, "the target rejected us and we don't know why" is
- * not a reason to keep going.
+ * One definition of "this connection is broken", written from two places: a
+ * failed "Test connection", and a publish whose adapter threw
+ * PUBLISH_AUTH_FAILED (PublishService records it there, or the pause below
+ * would only ever be reachable by a human clicking a button). A connection
+ * that failed for some other reason trips the same switch, which errs toward
+ * pausing: for the one mode that publishes without asking, "the target
+ * rejected us and we don't know why" is not a reason to keep going.
  */
 async function getFailedConnection(projectId: string) {
   const rows = await db
@@ -149,6 +153,7 @@ async function getState(projectId: string) {
 async function saveState(input: {
   projectId: string;
   consecutiveGateFailures: number;
+  consecutiveWriterFailures: number;
   pausedAt: string | null;
   pausedReason: string | null;
   updatedAt: string;
@@ -168,6 +173,12 @@ async function saveState(input: {
  * four are per-project reads the block makes for itself. Projects with no
  * state row sort first — they have never been reconciled, so they are the
  * furthest behind.
+ *
+ * The inner join on `projects` is the archived guard every other due-query
+ * carries. Archiving is a soft delete, so nothing else stops a deleted
+ * project's dial from still reading 'autopilot': without this the loop keeps
+ * approving proposals and starting drafts inside a project the tenant can no
+ * longer open, forever, and holds a due-set slot doing it.
  */
 async function getAutopilotProjects(limit: number, projectId?: string) {
   const rows = await db
@@ -176,6 +187,7 @@ async function getAutopilotProjects(limit: number, projectId?: string) {
       lastReconciledAt: autopilotState.updatedAt,
     })
     .from(writerSettings)
+    .innerJoin(projects, eq(projects.id, writerSettings.projectId))
     .leftJoin(
       autopilotState,
       eq(autopilotState.projectId, writerSettings.projectId),
@@ -183,6 +195,7 @@ async function getAutopilotProjects(limit: number, projectId?: string) {
     .where(
       and(
         eq(writerSettings.trustDial, "autopilot"),
+        isNull(projects.archivedAt),
         projectId ? eq(writerSettings.projectId, projectId) : undefined,
       ),
     )
@@ -218,16 +231,67 @@ async function countCommittedNetNew(projectId: string): Promise<number> {
 }
 
 /**
+ * Net-new the day has already said yes to, whoever said it.
+ *
+ * The indexation throttle's cap is a per-day ceiling ("posts net-new may
+ * propose today"), and the unattended run is one wake of ninety-six — a
+ * counter that started at zero each wake would pace the queue and never bound
+ * the day. Counted from `decidedAt` rather than from the quota's own debt
+ * because a publish repays the debt and would hand the allowance straight
+ * back. Every decider counts: the rule is one post today, and a human's yes
+ * spends the same day.
+ */
+async function countNetNewApprovedSince(
+  projectId: string,
+  sinceIso: string,
+): Promise<number> {
+  const rows = await db
+    .select({ approved: count() })
+    .from(proposals)
+    .where(
+      and(
+        eq(proposals.projectId, projectId),
+        eq(proposals.track, "net_new"),
+        inArray(proposals.status, [
+          "approved",
+          "executing",
+          "done",
+          "measured",
+        ]),
+        gte(proposals.decidedAt, sinceIso),
+      ),
+    );
+  return rows[0]?.approved ?? 0;
+}
+
+/**
  * Approved net-new proposals with no article in flight, oldest decision first.
  *
  * The `notExists` is a filter, not the guard: the partial unique on
  * `articles(proposal_id)` is what actually stops two writers, and this only
  * keeps the run from spending its cap of 2 on proposals whose article is
  * already being written.
+ *
+ * `failedArticles` rides along rather than becoming a WHERE clause: the run
+ * has to be able to name what it refused (AUTOPILOT_PROPOSAL_FAIL_LIMIT), and
+ * a proposal filtered out in SQL is a proposal nobody can be told about.
  */
 async function getWritableNetNewProposals(projectId: string, limit: number) {
   return db
-    .select({ id: proposals.id, target: proposals.target })
+    .select({
+      id: proposals.id,
+      target: proposals.target,
+      // `eq(...)` rather than a hand-written comparison: drizzle only
+      // table-qualifies a column inside a raw template when it renders the
+      // condition itself, and an unqualified `proposal_id = id` reads as two
+      // columns of the INNER table — a correlated subquery that silently
+      // counts zero.
+      failedArticles: sql<number>`(
+        select count(*) from ${articles}
+        where ${eq(articles.proposalId, proposals.id)}
+          and ${eq(articles.status, "failed")}
+      )`,
+    })
     .from(proposals)
     .where(
       and(
@@ -284,6 +348,7 @@ export const AutopilotRepository = {
   saveState,
   getAutopilotProjects,
   countCommittedNetNew,
+  countNetNewApprovedSince,
   getWritableNetNewProposals,
   getReviewArticles,
 };

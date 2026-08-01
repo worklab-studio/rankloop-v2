@@ -235,19 +235,29 @@ function percentWith(
  * looking for, and one the winners use LESS is a coincidence at these sample
  * sizes (30 winners, 15 median pages). An empty delta list is therefore a
  * finding — "their earners look like their ordinary posts" — not a gap.
+ *
+ * With no median sample there is no such finding to make. percentWith scores
+ * an unread cohort 0%, which would let every feature the winners carry clear
+ * the bar and publish "100% of their earners do, 0% of their ordinary pages
+ * do" about pages nobody fetched — a claim `sampleStudied: 0` contradicts.
+ * Callers read the empty list as "not measured" (that is what sampleStudied
+ * is for) and fall back to the labelled defaults.
  */
 export function compareWinnersToMedian(
   winners: StructuralFeatures[],
   sample: StructuralFeatures[],
 ): WinnersComparison {
   return {
-    deltas: BOOLEAN_FEATURES.flatMap(({ key, label }) => {
-      const winnersPct = percentWith(winners, key);
-      const medianPct = percentWith(sample, key);
-      return winnersPct > medianPct
-        ? [{ feature: label, winnersPct, medianPct }]
-        : [];
-    }),
+    deltas:
+      sample.length === 0
+        ? []
+        : BOOLEAN_FEATURES.flatMap(({ key, label }) => {
+            const winnersPct = percentWith(winners, key);
+            const medianPct = percentWith(sample, key);
+            return winnersPct > medianPct
+              ? [{ feature: label, winnersPct, medianPct }]
+              : [];
+          }),
     winnersMedianWordCount: medianOf(winners.map((page) => page.wordCount)),
     sampleMedianWordCount: medianOf(sample.map((page) => page.wordCount)),
     winnersStudied: winners.length,

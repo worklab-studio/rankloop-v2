@@ -145,7 +145,10 @@ beforeEach(() => {
     prior: [],
   });
   mocks.studyService.recordMetrics.mockResolvedValue(true);
-  mocks.studyService.studyTopPages.mockResolvedValue([]);
+  mocks.studyService.studyTopPages.mockResolvedValue({
+    pages: [],
+    windowSaturated: false,
+  });
   mocks.studyService.studyReferringDomains.mockResolvedValue(0);
   mocks.crawl.studySitemap.mockResolvedValue(sitemapWith([]));
   mocks.studyService.summarize.mockResolvedValue({ pagesStudied: 0 });
@@ -154,9 +157,10 @@ beforeEach(() => {
 
 describe("CompetitorStudyWorkflow", () => {
   it("marks the run done with the coverage the crawl earned", async () => {
-    mocks.studyService.studyTopPages.mockResolvedValue([
-      { url: "https://acme.com/blog/a", etv: 500 },
-    ]);
+    mocks.studyService.studyTopPages.mockResolvedValue({
+      pages: [{ url: "https://acme.com/blog/a", etv: 500 }],
+      windowSaturated: false,
+    });
     mocks.crawl.studySitemap.mockResolvedValue(
       sitemapWith(["https://acme.com/blog/a"]),
     );

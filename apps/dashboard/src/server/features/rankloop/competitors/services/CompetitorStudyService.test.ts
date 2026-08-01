@@ -201,7 +201,7 @@ describe("CompetitorStudyService.studyTopPages", () => {
 
     await expect(
       CompetitorStudyService.studyTopPages(context()),
-    ).resolves.toEqual([]);
+    ).resolves.toEqual({ pages: [], windowSaturated: false });
     expect(mocks.dataforseo.relevantPages).not.toHaveBeenCalled();
   });
 
@@ -222,9 +222,12 @@ describe("CompetitorStudyService.studyTopPages", () => {
     });
     const { CompetitorStudyService } = await import("./CompetitorStudyService");
 
-    const pages = await CompetitorStudyService.studyTopPages(context());
+    const study = await CompetitorStudyService.studyTopPages(context());
 
-    expect(pages).toEqual([{ url: "https://acme.com/blog/guide", etv: 900 }]);
+    expect(study).toEqual({
+      pages: [{ url: "https://acme.com/blog/guide", etv: 900 }],
+      windowSaturated: false,
+    });
     expect(mocks.repo.upsertCompetitorPages).toHaveBeenCalledWith(
       [
         expect.objectContaining({
@@ -235,6 +238,22 @@ describe("CompetitorStudyService.studyTopPages", () => {
       ],
       expect.any(String),
     );
+  });
+
+  it("flags a full window — the top 100 by etv is not the whole inventory", async () => {
+    mocks.dataforseo.relevantPages.mockResolvedValue({
+      items: Array.from({ length: 100 }, (unused, index) => ({
+        page_address: `https://acme.com/blog/post-${index}`,
+        metrics: { organic: { etv: 100 - index, count: 4 } },
+      })),
+      totalCount: 4_212,
+    });
+    const { CompetitorStudyService } = await import("./CompetitorStudyService");
+
+    const study = await CompetitorStudyService.studyTopPages(context());
+
+    expect(study.windowSaturated).toBe(true);
+    expect(study.pages).toHaveLength(100);
   });
 });
 
@@ -311,6 +330,7 @@ describe("CompetitorStudyService.summarize", () => {
     crawled: [],
     coverage: "full" as const,
     current: [],
+    windowSaturated: false,
   };
 
   it("writes a playbook even when the crawl was blocked, minus the deltas", async () => {
@@ -387,45 +407,5 @@ describe("CompetitorStudyService.summarize", () => {
       winnersMedianWordCount: 2400,
       medianSampleWordCount: 700,
     });
-  });
-
-  it("touches no page status on a keyless run — an empty set is not a deletion", async () => {
-    const { CompetitorStudyService } = await import("./CompetitorStudyService");
-
-    await CompetitorStudyService.summarize({
-      ...baseInput,
-      context: context({ prior: [{ url: "https://acme.com/a", etv: 900 }] }),
-      current: [],
-    });
-
-    expect(mocks.repo.setPageStatuses).not.toHaveBeenCalled();
-    // The sitemap half still lands: cadence and mix need no key.
-    expect(mocks.repo.updateCompetitor).toHaveBeenCalled();
-  });
-
-  it("settles decayed and removed pages against the prior snapshot", async () => {
-    const { CompetitorStudyService } = await import("./CompetitorStudyService");
-
-    const result = await CompetitorStudyService.summarize({
-      ...baseInput,
-      context: context({
-        prior: [
-          { url: "https://acme.com/rot", etv: 500 },
-          { url: "https://acme.com/gone", etv: 300 },
-          { url: "https://acme.com/fine", etv: 100 },
-        ],
-      }),
-      current: [
-        { url: "https://acme.com/rot", etv: 50 },
-        { url: "https://acme.com/fine", etv: 140 },
-      ],
-    });
-
-    expect(result.pagesStudied).toBe(2);
-    expect(mocks.repo.setPageStatuses.mock.calls).toEqual([
-      ["comp_1", ["https://acme.com/fine"], "active"],
-      ["comp_1", ["https://acme.com/rot"], "decayed"],
-      ["comp_1", ["https://acme.com/gone"], "removed"],
-    ]);
   });
 });

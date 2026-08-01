@@ -76,7 +76,9 @@ export const injectedLinkSchema = z.object({
     "delegated",
     /** The page's delimiters were damaged, so nothing was written. */
     "malformed",
-    /** The target has no page at that path any more. */
+    /** The target handed back no editable page at that path — it is gone, or
+     *  the target will only show its render, which is not a source anything
+     *  may be merged into. */
     "missing",
     /** The write was attempted and the target rejected it. */
     "failed",
