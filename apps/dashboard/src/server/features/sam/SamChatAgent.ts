@@ -159,7 +159,7 @@ export class SamChatAgent extends Think {
     return withPgClient(async () => {
       const ctx = await this.loadSamContext();
       if (!ctx) {
-        return "You are SAM, the SEO agent inside OpenSEO. This chat session no longer exists; tell the user to start a new chat.";
+        return "You are SAM, the SEO agent inside rankloop. This chat session no longer exists; tell the user to start a new chat.";
       }
       const memory = await SamProjectMemoryRepository.getBlock(
         ctx.project.id,
@@ -252,9 +252,13 @@ export class SamChatAgent extends Think {
         this.turnMonthlyRemaining = monthlyRemaining;
       }
 
+      // Only reachable before this DO has ever served a fetch(). The old
+      // fallback was upstream's production host, so on that path a
+      // self-hosted SAM handed the user deep links (with their project ids)
+      // into someone else's app. A placeholder breaks visibly instead.
       const baseUrl =
         (await this.ctx.storage.get<string>(PUBLIC_ORIGIN_KEY)) ??
-        "https://app.openseo.so";
+        "https://your-rankloop-instance";
       const authContext = buildFirstPartyMcpAuthContext({
         userId: ctx.row.userId,
         userEmail: ctx.userEmail,

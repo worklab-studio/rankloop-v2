@@ -1,0 +1,155 @@
+name: Self-host image
+
+# THE REGRESSION THIS EXISTS FOR.
+#
+# apps/dashboard depends on `@rankloop/engine` as `link:../../packages/engine` —
+# a path that leaves apps/dashboard. The inherited workflow built the image with
+# `context: .` back when `.` meant apps/dashboard, so the engine was never in the
+# build context. `pnpm install` does not verify `link:` targets, so the image
+# built GREEN and the container crashlooped at start with "Rollup failed to
+# resolve import '@rankloop/engine'". That went unnoticed for 18 specs.
+#
+# Two independent guards below, because they catch different halves of it:
+#   build  — root context + apps/dashboard/Dockerfile.selfhost. Catches anything
+#            the Dockerfile fails to COPY (a wrong context now fails on the very
+#            first COPY instead of producing a broken-but-green image).
+#   boot   — actually starts the container and waits for /api/health. Catches the
+#            half a build cannot: a dependency that resolves at install time and
+#            dies at runtime.
+#
+# This is a separate workflow rather than a job in ci.yml because the trigger
+# needs a `paths` filter and GitHub applies those per workflow, not per job.
+#
+# CAVEAT for branch protection: a `paths`-filtered workflow does not run at all
+# on PRs that miss the filter, and a required check that never runs blocks the
+# PR forever. Do not mark these jobs required — keep ci.yml's jobs as the
+# required set and treat this one as a gate on the paths it watches.
+
+on:
+  pull_request:
+    paths:
+      # Everything the image build reads. Keep in sync with the COPY lines in
+      # apps/dashboard/Dockerfile.selfhost.
+      - apps/dashboard/Dockerfile.selfhost
+      - apps/dashboard/docker-entrypoint.sh
+      - apps/dashboard/compose.yaml
+      - apps/dashboard/package.json
+      - apps/dashboard/pnpm-lock.yaml
+      - apps/dashboard/pnpm-workspace.yaml
+      - apps/dashboard/.npmrc
+      - apps/dashboard/scripts/selfhost-preflight.ts
+      - packages/**
+      - package.json
+      - pnpm-lock.yaml
+      - pnpm-workspace.yaml
+      - tsconfig.base.json
+      - .dockerignore
+      - .github/workflows/docker-selfhost.yml
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: selfhost-image-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: build + boot the self-host image
+    runs-on: ubuntu-latest
+    # The container runs a full ~7400-module vite build at first start (see
+    # docker-entrypoint.sh), on top of two pnpm installs during the image build.
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # CONTEXT IS THE REPO ROOT. Ignore rules come from the root .dockerignore
+      # (apps/dashboard/.dockerignore is no longer read at this context).
+      # `load: true` so the boot step below has the image in the local daemon.
+      - name: Build self-host image (root context)
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/dashboard/Dockerfile.selfhost
+          push: false
+          load: true
+          tags: rankloop:ci
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # Self-host's own default mode: no auth, no DataForSEO key, no writer key.
+      # Everything optional stays unset on purpose — this asserts the container
+      # boots for someone who has not configured anything yet, which is the exact
+      # first-run experience. Telemetry is disabled so CI runs never show up in
+      # the self-host heartbeat as real installs.
+      - name: Boot the container and wait for /api/health
+        run: |
+          set -euo pipefail
+          docker run -d --name rankloop-ci \
+            -p 127.0.0.1:3001:3001 \
+            -e PORT=3001 \
+            -e AUTH_MODE=local_noauth \
+            -e CLOUDFLARE_INCLUDE_PROCESS_ENV=true \
+            -e OPENSEO_TELEMETRY_DISABLED=1 \
+            -e DO_NOT_TRACK=1 \
+            rankloop:ci
+
+          # Generous budget: first start = migrations + a cold vite build.
+          for attempt in $(seq 1 120); do
+            if ! docker ps --filter name=rankloop-ci --filter status=running -q | grep -q .; then
+              echo "::error::container exited during startup"
+              docker logs rankloop-ci
+              exit 1
+            fi
+            if curl -fsS -m 5 http://127.0.0.1:3001/api/health >/dev/null 2>&1; then
+              echo "healthy after ~$((attempt * 10))s"
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "::error::/api/health never answered within 20 minutes"
+          docker logs rankloop-ci
+          exit 1
+
+      - name: Container logs
+        if: always()
+        run: docker logs rankloop-ci || true
+
+      - name: Tear down
+        if: always()
+        run: docker rm -f rankloop-ci || true
+
+  # `docker compose config` parses compose.yaml and resolves its build context
+  # against this file's own directory — cheap proof that the compose path and the
+  # workflow path above still point at the same Dockerfile.
+  compose:
+    name: compose config parses
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      # compose.yaml declares `env_file: .env` and errors without it. Self-hosters
+      # create it with `cp .env.example .env`; do the same here.
+      - name: Create .env from the example
+        working-directory: apps/dashboard
+        run: cp .env.example .env
+
+      - name: Validate compose.yaml
+        working-directory: apps/dashboard
+        run: docker compose config --quiet

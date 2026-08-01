@@ -1,0 +1,84 @@
+name: Publish Docker image
+
+# Was apps/dashboard/.github/workflows/docker-image.yml — inherited from the
+# vendored fork, never executed (GitHub only reads the repo-root .github/).
+#
+# Two adaptations beyond the move:
+#   * context is the REPO ROOT with file: apps/dashboard/Dockerfile.selfhost.
+#     Upstream's `context: .` + `file: Dockerfile.selfhost` resolved correctly
+#     only while apps/dashboard was the repo root.
+#   * the image name and the repository gate are rankloop's, not
+#     ghcr.io/every-app/open-seo. Publishing rankloop builds under upstream's
+#     name would have been the worst possible outcome of this file finally
+#     running.
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: publish-image-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  docker:
+    # Forks inherit workflows; without this they would try to push to a GHCR
+    # namespace they do not own and fail noisily on every push to their main.
+    # Update this string if the repository ever moves.
+    if: github.repository == 'worklab-studio/rankloop-v2'
+    runs-on: ubuntu-latest
+    # arm64 is built under QEMU emulation and the image does two pnpm installs
+    # plus a tsup build. Budget accordingly.
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # GITHUB_TOKEN is always present, so this needs no secret guard — it is
+      # the only credential this workflow uses.
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=semver,pattern={{major}}
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: apps/dashboard/Dockerfile.selfhost
+          push: true
+          platforms: linux/amd64,linux/arm64
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

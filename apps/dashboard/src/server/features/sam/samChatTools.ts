@@ -173,7 +173,7 @@ function scrapeTools(projectDomain: string | null): ToolSet {
 
 /**
  * Builds SAM's tool surface as an AI SDK ToolSet: the full MCP toolset plus the
- * free site-reading tools. Every tool the OpenSEO MCP server exposes is
+ * free site-reading tools. Every tool the rankloop MCP server exposes is
  * available; auth/billing context is carried on a synthetic `ToolExtra` the
  * handlers read exactly as they would on the real MCP route. DataForSEO spend
  * is metered inside the shared client, so tool calls draw down the org's
@@ -209,7 +209,7 @@ export function buildSamMcpTools(
     // made the agent narrate hosted/self-hosted framing at signed-in users).
     get_product_info: tool({
       description:
-        "The OpenSEO fact sheet: what the product does, plans/pricing, credit costs, integrations, MCP setup. Call before answering questions about OpenSEO itself. Uses no credits.",
+        "The OpenSEO fact sheet — the product reference for the upstream project rankloop is built on: what the product does, plans/pricing, credit costs, integrations, MCP setup. Call before answering questions about the product itself. Uses no credits.",
       inputSchema: z.object({}),
       execute: () => Promise.resolve({ factSheet: openSeoFactSheet }),
     }),

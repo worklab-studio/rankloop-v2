@@ -4,9 +4,9 @@ import { isErrorCode, type ErrorCode } from "@/shared/error-codes";
 const STANDARD_MESSAGES: Record<ErrorCode, string> = {
   UNAUTHENTICATED: "Please sign in and try again.",
   AUTH_CONFIG_MISSING:
-    "OpenSEO auth is not configured. Follow the README setup steps for Cloudflare Access.",
+    "rankloop auth is not configured. Follow the README setup steps for Cloudflare Access.",
   PAYMENT_REQUIRED:
-    "An active hosted subscription is required before you can use OpenSEO.",
+    "An active hosted subscription is required before you can use rankloop.",
   INSUFFICIENT_CREDITS:
     "You've run out of credits. Add more credits or upgrade your plan to continue.",
   FORBIDDEN: "You do not have access to this resource.",
@@ -31,7 +31,7 @@ const STANDARD_MESSAGES: Record<ErrorCode, string> = {
   PUBLISH_UNREACHABLE:
     "Could not reach the WordPress site. Check the site URL and that the REST API is enabled.",
   WRITER_NOT_CONFIGURED:
-    "Add OPENROUTER_API_KEY to your deployment before OpenSEO can write drafts.",
+    "Add OPENROUTER_API_KEY to your deployment before rankloop can write drafts.",
   RATE_LIMITED: "Too many requests. Please wait and try again.",
   UPSTREAM_UNAVAILABLE:
     "The data provider is temporarily unavailable. Please retry in a moment.",

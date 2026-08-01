@@ -1,0 +1,78 @@
+name: Upload sourcemaps
+
+# MOVED from apps/dashboard/.github/workflows/ (never ran — GitHub reads only
+# the repo-root .github/). Adaptations: dashboard working-directory, the engine
+# build in front of the dashboard install, and upstream's
+# `github.repository != 'every-app/open-seo'` gate replaced by a real
+# secret-presence guard — the old gate would have run this on EVERY fork and
+# every rankloop push, failing on an empty POSTHOG_CLI_TOKEN.
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: sourcemaps-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # `secrets` is unavailable in `jobs.<id>.if`, so the check lives in a step.
+  guard:
+    name: posthog secrets present?
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          POSTHOG_CLI_TOKEN: ${{ secrets.POSTHOG_CLI_TOKEN }}
+          POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST }}
+          POSTHOG_CLI_ENV_ID: ${{ vars.POSTHOG_CLI_ENV_ID }}
+        run: |
+          set -euo pipefail
+          if [ -n "$POSTHOG_CLI_TOKEN" ] && [ -n "$POSTHOG_CLI_HOST" ] && [ -n "$POSTHOG_CLI_ENV_ID" ]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::sourcemap upload skipped (POSTHOG_CLI_TOKEN secret and/or POSTHOG_CLI_HOST / POSTHOG_CLI_ENV_ID vars are unset)"
+          fi
+
+  upload:
+    needs: guard
+    if: needs.guard.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      POSTHOG_SOURCEMAPS: "true"
+      POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST }}
+      POSTHOG_CLI_ENV_ID: ${{ vars.POSTHOG_CLI_ENV_ID }}
+      POSTHOG_CLI_TOKEN: ${{ secrets.POSTHOG_CLI_TOKEN }}
+    defaults:
+      run:
+        working-directory: apps/dashboard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node and pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      # sourcemaps:upload runs the dashboard build, which resolves
+      # @rankloop/engine through link:../../packages/engine -> a gitignored
+      # dist/. Build it first or the build fails on an unresolvable import.
+      - name: Build @rankloop/engine
+        working-directory: ${{ github.workspace }}
+        run: |
+          pnpm install --frozen-lockfile --filter @rankloop/engine
+          pnpm --filter @rankloop/engine build
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build and upload sourcemaps
+        run: pnpm run sourcemaps:upload

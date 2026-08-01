@@ -1,6 +1,8 @@
 import { CodeBlock } from "@/client/features/ai-mcp/SetupControls";
 
-const SKILL_INSTALL = `npx skills add every-app/open-seo --skill rankloop`;
+// The `rankloop` skill is rankloop's own; it does not exist in upstream's
+// repo, so this install pointed at a skill that was never there.
+const SKILL_INSTALL = `npx skills add worklab-studio/rankloop-v2 --skill rankloop`;
 const REPO_KIT_INIT = `npx rankloop init`;
 
 // The six tools an agent needs to run the loop, in the order it calls them.

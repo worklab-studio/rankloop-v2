@@ -6,12 +6,13 @@
 // same interface later.
 
 import { normalizeAndValidateStartUrl } from "@/server/lib/audit/url-policy";
+import { SCRAPE_USER_AGENT } from "@/shared/product";
 
 export const MAX_PAGES = 5;
 const PER_PAGE_CHAR_LIMIT = 4000;
 const FETCH_TIMEOUT_MS = 10_000;
 const MAX_RESPONSE_BYTES = 2_000_000;
-const USER_AGENT = "OpenSEO-Onboarding/1.0 (+https://openseo.so)";
+const USER_AGENT = SCRAPE_USER_AGENT;
 
 type ScrapedPage = {
   url: string;

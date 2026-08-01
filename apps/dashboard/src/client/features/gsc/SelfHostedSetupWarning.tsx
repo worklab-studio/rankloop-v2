@@ -13,8 +13,8 @@ export function SelfHostedSetupWarning() {
       <div className="space-y-1">
         <p className="font-medium">Google OAuth client not configured</p>
         <p className="text-base-content/70">
-          Add your Google client ID and secret to this OpenSEO deployment before
-          connecting Search Console.
+          Add your Google client ID and secret to this rankloop deployment
+          before connecting Search Console.
         </p>
         <SafeExternalLink
           url={GSC_SELF_HOSTED_SETUP_DOCS_URL}

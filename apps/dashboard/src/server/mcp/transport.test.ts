@@ -227,12 +227,14 @@ describe("handleSelfHostedOpenSeoMcpRequest", () => {
 
     const serverInfo = client.getServerVersion();
     expect(serverInfo).toMatchObject({
-      name: "OpenSEO MCP",
-      title: "OpenSEO",
-      websiteUrl: "https://openseo.so",
+      name: "rankloop MCP",
+      title: "rankloop",
+      websiteUrl: "https://github.com/worklab-studio/rankloop-v2",
+      // Icon is served from the deployment's own origin, not upstream's CDN,
+      // so a self-hosted install does not depend on openseo.so being up.
       icons: [
         {
-          src: "https://openseo.so/android-chrome-512x512.png",
+          src: "https://open-seo.test/android-chrome-512x512.png",
           mimeType: "image/png",
           sizes: ["512x512"],
         },

@@ -4,8 +4,9 @@ import type {
 } from "@/server/lib/audit/types";
 import { sha256Hex } from "@/server/lib/audit/ids";
 import { normalizeUrl } from "@/server/lib/audit/url-utils";
+import { AUDIT_USER_AGENT } from "@/shared/product";
 
-const CRAWL_USER_AGENT = "OpenSEO-Audit/1.0";
+const CRAWL_USER_AGENT = AUDIT_USER_AGENT;
 const MAX_HTML_BYTES = 2 * 1024 * 1024;
 
 // Cap on persisted same-origin outlink paths per page. 50 covers real
@@ -80,7 +81,7 @@ function parseLinkHeaderCanonical(
 
 /**
  * Fetch a page and hand back its raw HTML, under the same rules crawlPage
- * applies: OpenSEO-Audit/1.0, a 15-second timeout, a 2 MiB body ceiling, and
+ * applies: the rankloop-Audit user agent, a 15-second timeout, a 2 MiB body ceiling, and
  * the same bot-challenge verdict. The competitor study extracts a different
  * feature set than the audit's page analysis (data tables, FAQ blocks,
  * bylines) so it needs the document crawlPage consumes internally — but the

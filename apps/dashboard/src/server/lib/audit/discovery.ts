@@ -4,6 +4,7 @@
 import robotsParser from "robots-parser";
 import { XMLParser } from "fast-xml-parser";
 import { isSameOrigin, normalizeUrl } from "./url-utils";
+import { AUDIT_USER_AGENT } from "@/shared/product";
 
 const SITEMAP_FETCH_TIMEOUT_MS = 15_000;
 const MAX_SITEMAP_DEPTH = 3;
@@ -29,7 +30,7 @@ export interface RobotsResult {
 async function fetchRobotsTxtText(origin: string): Promise<string | null> {
   try {
     const response = await fetch(`${origin}/robots.txt`, {
-      headers: { "User-Agent": "OpenSEO-Audit/1.0" },
+      headers: { "User-Agent": AUDIT_USER_AGENT },
       signal: AbortSignal.timeout(10_000),
     });
 
@@ -151,7 +152,7 @@ async function fetchSitemapDocumentWithRetry(sitemapUrl: string): Promise<{
   for (let attempt = 0; attempt <= SITEMAP_RETRIES; attempt++) {
     try {
       const response = await fetch(normalizedSitemapUrl, {
-        headers: { "User-Agent": "OpenSEO-Audit/1.0" },
+        headers: { "User-Agent": AUDIT_USER_AGENT },
         signal: AbortSignal.timeout(SITEMAP_FETCH_TIMEOUT_MS),
       });
 

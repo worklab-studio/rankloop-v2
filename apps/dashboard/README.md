@@ -1,3 +1,17 @@
+> **You are reading OpenSEO's README, kept verbatim.**
+>
+> This directory is `apps/dashboard` of **rankloop 2.0**, a vendored fork of
+> OpenSEO (MIT, Copyright (c) 2026 Ben Senescu) taken at commit `9d19e43`. The
+> app you build from here is branded rankloop, and rankloop adds the write side
+> — page plan, proposals, the writer and its laws gate, publishing, receipts.
+> Everything described below is upstream's own work and upstream's own hosted
+> service; its pricing, docs, and links point at OpenSEO, not at rankloop.
+>
+> rankloop's README is at the repo root. The fork point is recorded in
+> `ATTRIBUTION.md`; upstream's license is preserved in `LICENSE`.
+
+---
+
 # OpenSEO
 
 > Open source alternative to Semrush and Ahrefs

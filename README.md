@@ -256,12 +256,22 @@ that you find out here rather than three hours in.
   reads, because the repo root has no `.github`. The Docker job in them also
   still assumes the pre-fork build context. Until those move, nothing stops a
   self-host regression from shipping green.
-- **The app is still branded OpenSEO.** The page title, the sidebar wordmark,
-  the empty states and the in-app help links all say OpenSEO and point at
-  upstream. The rankloop screens (Plan, Articles, Receipts, the pipeline card
-  on the Dashboard) are rankloop's, but they sit inside upstream's shell. This
-  is cosmetic, and it is being fixed, but it is the first thing you will
-  notice.
+- **The app has no logo of its own.** The shell is rankloop now — page title,
+  sidebar wordmark, setup and empty states, help pages, the MCP server as your
+  agent sees it, and the crawler user agent (`rankloop-Audit`). The fork is
+  credited in the sidebar footer and Settings -> About, both linking upstream.
+  What has not changed is the mark: `apps/dashboard/public/favicon*`,
+  `apple-touch-icon.png`, `android-chrome-*.png` and `transparent-logo.png` are
+  still OpenSEO's artwork, because inventing a rankloop logo was out of scope.
+  Replace those eight files and the branding is complete.
+- **The onboarding preview chat still speaks as OpenSEO.** That hosted-only
+  funnel (`_authenticated/onboarding/*`) runs off
+  `src/server/features/onboarding/openseo-fact-sheet.md`, which is a factual
+  sheet about OpenSEO's hosted service: its plans, its $0.50 trial credit, its
+  Discord, its support address. Renaming the product inside it would have
+  rankloop assert prices and support channels it does not operate, so it was
+  left alone until someone writes rankloop's real facts. A rankloop self-host
+  never reaches those routes -- `_authenticated` renders in hosted mode only.
 - **The container rebuilds the app at every start**, including a full
   typecheck. That is why first boot takes minutes, and it means a type error
   anywhere fails the container at runtime instead of at image build time.

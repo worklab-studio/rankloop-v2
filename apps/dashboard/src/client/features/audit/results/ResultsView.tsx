@@ -16,6 +16,7 @@ import {
   ExportDropdown,
   PerformanceTable,
 } from "@/client/features/audit/results/ResultsTables";
+import { AUDIT_CRAWLER_NAME } from "@/shared/product";
 
 type ResultsTab = "issues" | "pages" | "performance";
 
@@ -53,8 +54,8 @@ export function ResultsView({
             <span className="text-base-content/70">
               The site's bot protection challenged our crawler, so those pages
               couldn't be audited. If this is your site, allowlist the{" "}
-              <code className="font-mono">OpenSEO-Audit</code> user agent in
-              your WAF or bot-protection settings and re-run the audit.
+              <code className="font-mono">{AUDIT_CRAWLER_NAME}</code> user agent
+              in your WAF or bot-protection settings and re-run the audit.
             </span>
           </p>
         </div>

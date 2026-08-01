@@ -82,7 +82,7 @@ async function startArticle(input: {
   if (!(await hasWriterProvider())) {
     throw new AppError(
       "WRITER_NOT_CONFIGURED",
-      "Add OPENROUTER_API_KEY to your deployment before OpenSEO can write drafts.",
+      "Add OPENROUTER_API_KEY to your deployment before rankloop can write drafts.",
     );
   }
 

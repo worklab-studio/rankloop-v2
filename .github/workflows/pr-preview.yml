@@ -1,17 +1,23 @@
 name: PR Preview
 
-# Alchemy preview stage per private-repo PR: deploy on open/update, destroy on
-# close (stage pr-<n>). Full model in docs/PREVIEW_DEPLOYMENTS.md.
+# Alchemy preview stage per PR: deploy on open/update, destroy on close
+# (stage pr-<n>). Full model in apps/dashboard/docs/PREVIEW_DEPLOYMENTS.md.
 #
-# Public-mirror (every-app/open-seo) PRs NEVER deploy from CI — fork code must
-# not run with deploy secrets. Preview those locally from a worktree instead
-# (docs/PREVIEW_DEPLOYMENTS.md, "Public-mirror PRs"). The repository gate
-# below keeps the synced copy of this file inert on the mirror.
+# MOVED from apps/dashboard/.github/workflows/ (never ran — GitHub reads only
+# the repo-root .github/). Adaptations for the move:
+#   * dashboard-scoped steps run under defaults.run.working-directory; the
+#     engine build that must precede them runs at the workspace root.
+#   * paths-ignore rewritten for repo-root-relative paths.
+#   * upstream's `github.repository == 'bensenescu/open-seo'` gate is replaced by
+#     the `guard` job below, which skips cleanly when the deploy secrets are
+#     absent — which is the state of every fork and of this repo until someone
+#     sets them. A missing secret must never be a red X on an honest PR.
 #
-# Required repo secrets: CLOUDFLARE_API_TOKEN (Workers Scripts/KV/D1/R2/
-# Workflows write + Secrets Store read + Account Settings read — the last two
-# are how alchemy fetches its state-store token via an edge-preview worker),
-# CLOUDFLARE_ACCOUNT_ID, ENV_PREVIEW (.env.preview contents).
+# Fork PRs NEVER deploy: fork code must not run with deploy secrets.
+#
+# Repo secrets this needs (all three, or the job no-ops): CLOUDFLARE_API_TOKEN
+# (Workers Scripts/KV/D1/R2/Workflows write + Secrets Store read + Account
+# Settings read), CLOUDFLARE_ACCOUNT_ID, ENV_PREVIEW (.env.preview contents).
 
 on:
   pull_request:
@@ -21,10 +27,15 @@ on:
     paths-ignore:
       - "**/*.md"
       - docs/**
-      - runbooks/**
-      - .agents/**
-      - web/**
-      - badseo/**
+      - apps/dashboard/docs/**
+      - apps/dashboard/runbooks/**
+      - apps/dashboard/.agents/**
+      - apps/dashboard/web/**
+      - apps/dashboard/badseo/**
+      - apps/web/**
+      - .github/workflows/ci.yml
+      - .github/workflows/docker-selfhost.yml
+      - .github/workflows/publish-image.yml
 
 # A newer push supersedes any in-flight deploy for the same PR (alchemy's
 # per-resource state reconciles cleanly on the next run); a close-triggered
@@ -37,18 +48,53 @@ permissions:
   contents: read
   pull-requests: write
 
-env:
-  STAGE: pr-${{ github.event.pull_request.number }}
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-
 jobs:
-  preview:
-    if: >-
-      github.repository == 'bensenescu/open-seo' &&
-      github.event.pull_request.head.repo.full_name == github.repository
+  # The `secrets` context is not available in `jobs.<id>.if`, only inside steps.
+  # So the presence check lives in a step here and the real job gates on its
+  # output. Without secrets this reports "skipped" instead of failing red.
+  guard:
+    name: preview secrets present?
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 2
+    outputs:
+      enabled: ${{ steps.check.outputs.enabled }}
+    steps:
+      - id: check
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ENV_PREVIEW: ${{ secrets.ENV_PREVIEW }}
+          SAME_REPO: ${{ github.event.pull_request.head.repo.full_name == github.repository }}
+        run: |
+          set -euo pipefail
+          missing=""
+          [ -n "$CLOUDFLARE_API_TOKEN" ] || missing="$missing CLOUDFLARE_API_TOKEN"
+          [ -n "$CLOUDFLARE_ACCOUNT_ID" ] || missing="$missing CLOUDFLARE_ACCOUNT_ID"
+          [ -n "$ENV_PREVIEW" ] || missing="$missing ENV_PREVIEW"
+          if [ "$SAME_REPO" != "true" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::fork PR — preview deploys are disabled by design"
+            exit 0
+          fi
+          if [ -n "$missing" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::preview deploys disabled (unset repo secrets:$missing)"
+            exit 0
+          fi
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+
+  preview:
+    needs: guard
+    if: needs.guard.outputs.enabled == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      STAGE: pr-${{ github.event.pull_request.number }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+    defaults:
+      run:
+        working-directory: apps/dashboard
 
     steps:
       - name: Checkout
@@ -56,16 +102,20 @@ jobs:
         with:
           ref: ${{ github.event.pull_request.head.sha }}
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Setup Node and pnpm
+        uses: ./.github/actions/setup-pnpm
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
+      # The preview build resolves @rankloop/engine through
+      # link:../../packages/engine, whose exports point at a gitignored dist/.
+      # Build it before the dashboard installs, or `vite build` dies on an
+      # unresolvable import.
+      - name: Build @rankloop/engine
+        working-directory: ${{ github.workspace }}
+        run: |
+          pnpm install --frozen-lockfile --filter @rankloop/engine
+          pnpm --filter @rankloop/engine build
 
-      - name: Install dependencies
+      - name: Install dashboard dependencies
         run: pnpm install --frozen-lockfile
 
       - name: Write .env.preview
@@ -100,7 +150,7 @@ jobs:
       # preview is public; retries are only for propagation-era errors.
       # (Cloudflare version preview URLs sit outside this wildcard, but alchemy
       # uploads versions with no preview provisioned, so none are served — see
-      # docs/PREVIEW_DEPLOYMENTS.md.)
+      # apps/dashboard/docs/PREVIEW_DEPLOYMENTS.md.)
       - name: Verify Access protection
         if: github.event.action != 'closed'
         run: |
@@ -133,6 +183,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR: ${{ github.event.pull_request.number }}
         run: |
+          # shellcheck disable=SC2016  # single quotes are printf FORMAT strings
           if [ "${{ github.event.action }}" = "closed" ]; then
             body=$(printf '**Preview destroyed** (stage `%s`).' "$STAGE")
           else

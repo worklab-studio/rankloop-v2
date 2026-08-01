@@ -22,6 +22,7 @@ import { closeDropdown } from "@/client/lib/dropdown";
 import { signOutAndRedirect, useSession } from "@/lib/auth-client";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
 import { BILLING_ROUTE } from "@/shared/billing";
+import { UPSTREAM_REPO_URL } from "@/shared/product";
 
 interface SidebarProps {
   projectId: string | null;
@@ -126,7 +127,7 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
           onClick={onNavigate}
           className="text-base font-semibold text-base-content"
         >
-          OpenSEO
+          rankloop
         </Link>
         {onClose ? (
           <button
@@ -303,6 +304,22 @@ function SidebarFooter({ onNavigate }: { onNavigate?: () => void }) {
           linkProps={{ to: "/settings" }}
         />
       )}
+
+      {/* rankloop is a fork of OpenSEO (MIT). Credit belongs where a user can
+          actually see it, not only in LICENSE — so it lives here, one line,
+          on every screen. Full terms: apps/dashboard/ATTRIBUTION.md. */}
+      <p className="px-3 pt-2 text-[11px] leading-tight text-base-content/40">
+        Built on{" "}
+        <a
+          href={UPSTREAM_REPO_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="link link-hover"
+        >
+          OpenSEO
+        </a>{" "}
+        (MIT)
+      </p>
     </div>
   );
 }

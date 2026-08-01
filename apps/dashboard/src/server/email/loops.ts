@@ -121,7 +121,7 @@ export async function sendHostedVerificationEmail({
     email,
     transactionalId: config.verificationTemplateId,
     dataVariables: {
-      appName: "OpenSEO",
+      appName: "rankloop",
       confirmationUrl,
     },
   });
@@ -182,7 +182,7 @@ export async function sendHostedPasswordResetEmail({
     email,
     transactionalId: config.passwordResetTemplateId,
     dataVariables: {
-      appName: "OpenSEO",
+      appName: "rankloop",
       resetUrl,
     },
   });

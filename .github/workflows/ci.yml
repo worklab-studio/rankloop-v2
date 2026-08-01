@@ -1,0 +1,233 @@
+name: CI
+
+# THIS FILE LIVES AT THE REPO ROOT ON PURPOSE.
+#
+# It used to sit at apps/dashboard/.github/workflows/ci.yml — inherited from the
+# vendored OpenSEO fork, where apps/dashboard WAS the repo root. GitHub only
+# reads .github/ at the top level of a repository, so for the whole 2.0 build
+# nothing here ever executed: "CI green" meant "green when someone ran it
+# locally". Moving it up is the fix; everything below is the adaptation that
+# move requires (working-directory, lockfile paths, two pnpm roots).
+#
+# The self-host image build is NOT here — it needs a path filter, and GitHub
+# path filters are per-workflow, not per-job. See docker-selfhost.yml.
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  # Lints the workflows themselves — expression syntax, action inputs, runner
+  # labels, plus shellcheck over every `run:` block. Pinned image, no curl-to-
+  # bash. Cheap enough to run on every PR; the alternative is finding out that
+  # a workflow is malformed only after it fails to start.
+  workflows:
+    name: workflows lint (actionlint)
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: actionlint
+        run: |
+          docker run --rm -v "$PWD:/repo" --workdir /repo \
+            rhysd/actionlint:1.7.12 -color
+
+  # ---------------------------------------------------------------------------
+  # ORDER IS LOAD-BEARING: engine -> everything else.
+  #
+  # packages/engine publishes `./dist` from its `exports` map, and both the CLI
+  # (workspace:*) and the dashboard (link:../../packages/engine, from a separate
+  # pnpm root) import it that way. `dist/` is gitignored, so a fresh checkout has
+  # none — any job that resolves @rankloop/engine before this one has built it
+  # fails on an unresolvable import. Hence the artifact handoff below rather than
+  # a per-job rebuild: it makes the dependency visible in the CI graph instead of
+  # leaving it to whoever remembers to add a build step.
+  # ---------------------------------------------------------------------------
+  engine:
+    name: engine (build + test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node and pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      # --filter still validates every importer in the lockfile, it just skips
+      # installing the rest. Same call Dockerfile.selfhost makes, for the same
+      # reason: nothing else on this job's critical path needs apps/web's deps.
+      - name: Install engine dependencies
+        run: pnpm install --frozen-lockfile --filter @rankloop/engine
+
+      - name: Build @rankloop/engine
+        run: pnpm --filter @rankloop/engine build
+
+      - name: Typecheck @rankloop/engine
+        run: pnpm --filter @rankloop/engine typecheck
+
+      - name: Test @rankloop/engine
+        run: pnpm --filter @rankloop/engine test:ci
+
+      # Consumed by `packages` and `dashboard`. One day of retention: this is a
+      # build intermediate, not a release artifact.
+      - name: Upload engine dist
+        uses: actions/upload-artifact@v4
+        with:
+          name: engine-dist
+          path: packages/engine/dist
+          if-no-files-found: error
+          retention-days: 1
+
+  packages:
+    name: packages (typecheck + test + cli build)
+    needs: engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node and pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install workspace dependencies
+        run: pnpm install --frozen-lockfile
+
+      # packages/cli's tests import @rankloop/engine, which resolves to dist/.
+      - name: Restore @rankloop/engine dist
+        uses: actions/download-artifact@v4
+        with:
+          name: engine-dist
+          path: packages/engine/dist
+
+      - name: Typecheck every workspace project
+        run: pnpm -r typecheck
+
+      - name: Test every workspace project
+        run: pnpm -r test:ci
+
+      - name: Build the rankloop CLI
+        run: pnpm --filter rankloop build
+
+      # The CLI is a published bin; a bundle that builds but cannot start is a
+      # release-day discovery. `--help` exercises the shebang, the ESM output and
+      # the externalised @rankloop/engine import in one cheap call.
+      - name: Smoke-test the built CLI
+        run: node packages/cli/dist/rankloop.js --help
+
+  # ---------------------------------------------------------------------------
+  # The vendored OpenSEO fork. `defaults.run.working-directory` is what lets the
+  # upstream commands survive the move unedited — they were all written to run
+  # from what is now apps/dashboard.
+  #
+  # Note this job does NOT install the workspace root. packages/engine declares
+  # no runtime dependencies and ships one bundled ESM file, so the restored
+  # dist/ plus its package.json is everything the link: target needs.
+  # ---------------------------------------------------------------------------
+  dashboard:
+    name: dashboard (ci:check + tests + worker bundle)
+    needs: engine
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: apps/dashboard
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node and pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      # `path` here is relative to the workspace root, NOT to the job's
+      # working-directory default — defaults.run only applies to `run` steps.
+      - name: Restore @rankloop/engine dist
+        uses: actions/download-artifact@v4
+        with:
+          name: engine-dist
+          path: packages/engine/dist
+
+      - name: Install dashboard dependencies
+        run: pnpm install --frozen-lockfile
+
+      # THE DANGLING-SYMLINK GUARD. `link:../../packages/engine` is not verified
+      # by pnpm at install time: if the target is missing or unbuilt, install
+      # still succeeds and the failure surfaces much later as "Rollup failed to
+      # resolve import '@rankloop/engine'" — which is exactly how self-host
+      # crashlooped for 18 specs. One import, two seconds, caught at install.
+      - name: Verify the linked engine actually resolves
+        run: node --input-type=module -e "const m = await import('@rankloop/engine'); if (Object.keys(m).length === 0) { throw new Error('@rankloop/engine resolved but exports nothing'); } console.log('@rankloop/engine ok:', Object.keys(m).length, 'exports');"
+
+      # prettier --check . && knip && tsc --noEmit && tsc -p badseo && oxlint
+      - name: Run CI checks
+        run: pnpm run ci:check
+
+      - name: Run tests
+        run: pnpm run test:ci
+
+      # Runs the leanWorkerBundle generateBundle assertion: fails if a
+      # denylisted package (dataforseo-client, autumn-js, ...) re-enters the
+      # worker's eager startup graph. See vite-plugin-lean-worker-bundle.ts.
+      - name: Build worker (eager-bundle guard)
+        run: pnpm vite build
+
+  # ---------------------------------------------------------------------------
+  # apps/dashboard/web — the marketing/docs site, a THIRD pnpm root with its own
+  # lockfile. Split out of the dashboard job (upstream ran them in one) because
+  # it shares nothing with it: no engine, no workspace install, and a failure
+  # here says nothing about the product.
+  #
+  # web/package.json declares no `packageManager`, so corepack walks up and uses
+  # apps/dashboard's pin (10.30.1). Note that bare `pnpm` outside CI resolves
+  # this differently — pnpm treats web/ as its own project root and stays on
+  # whatever version is ambient. Both are pnpm 10 against a v9.0 lockfile, so
+  # --frozen-lockfile validates identically; just don't be surprised by the
+  # version banner differing between CI and your terminal.
+  #
+  # It is still upstream's OpenSEO landing site. It builds; it does not yet say
+  # rankloop. That is finding (B), not this workflow's problem.
+  # ---------------------------------------------------------------------------
+  landing:
+    name: landing site (types + build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: apps/dashboard/web
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+
+      - name: Setup Node and pnpm
+        uses: ./.github/actions/setup-pnpm
+
+      - name: Install website dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run website type checks
+        run: pnpm run types:check
+
+      - name: Build website
+        run: pnpm run build

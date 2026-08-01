@@ -13,19 +13,27 @@ import {
 } from "@/server/mcp/context";
 import { getPublicOrigin } from "@/server/mcp/public-origin";
 import { registerOpenSeoMcpTools } from "@/server/mcp/server";
+import { RANKLOOP_REPO_URL } from "@/shared/product";
 
-function createOpenSeoMcpServer() {
+// This block is the product identity an MCP client shows in its connector
+// list, so it has to name the deployment the user actually connected to.
+//
+// The icon is served from THIS deployment's own origin rather than
+// openseo.so's CDN: the previous absolute URL both rendered upstream's logo in
+// the client and made a self-hosted install depend on upstream staying up. The
+// mark itself is still OpenSEO's — rankloop has no logo of its own yet.
+function createOpenSeoMcpServer(origin: string) {
   const server = new McpServer(
     {
-      name: "OpenSEO MCP",
-      title: "OpenSEO",
+      name: "rankloop MCP",
+      title: "rankloop",
       version: "0.0.11",
       description:
         "SEO research tools for AI agents: keyword research and metrics, SERP and local SERP results, domain and backlink analysis, rank tracking, and Google Search Console performance.",
-      websiteUrl: "https://openseo.so",
+      websiteUrl: RANKLOOP_REPO_URL,
       icons: [
         {
-          src: "https://openseo.so/android-chrome-512x512.png",
+          src: `${origin}/android-chrome-512x512.png`,
           mimeType: "image/png",
           sizes: ["512x512"],
         },
@@ -33,7 +41,7 @@ function createOpenSeoMcpServer() {
     },
     {
       instructions:
-        "OpenSEO research tools use credits. Proceed with normal focused research, but ask the user for confirmation before planned batches over 2,000 credits.",
+        "rankloop research tools use credits. Proceed with normal focused research, but ask the user for confirmation before planned batches over 2,000 credits.",
     },
   );
   registerOpenSeoMcpTools(server);
@@ -114,7 +122,7 @@ function handleOpenSeoMcpRequest(
     );
   }
 
-  const server = createOpenSeoMcpServer();
+  const server = createOpenSeoMcpServer(getPublicOrigin(request));
   const handler = createMcpHandler(server, {
     route: MCP_ROUTE,
     enableJsonResponse: true,

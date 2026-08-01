@@ -2,6 +2,7 @@ import { XMLParser } from "fast-xml-parser";
 import { z } from "zod";
 import type { UniverseCandidate } from "@/server/features/rankloop/universe/services/keywordAdmission";
 import type { HarvestConfig } from "@/types/schemas/rankloopUniverse";
+import { RANKLOOP_REPO_URL } from "@/shared/product";
 
 // Real questions real people typed, from two published feeds that need no
 // key and no approval. Autocomplete gives you the phrasing; these give you
@@ -31,7 +32,7 @@ const FEED_TIMEOUT_MS = 20_000;
 
 // Identify honestly: an anonymous-looking bot is what a feed operator
 // throttles first, and this request is research, not a crawl.
-const HARVEST_USER_AGENT = "rankloop/2.0 (query research; +https://openseo.so)";
+const HARVEST_USER_AGENT = `rankloop/2.0 (query research; +${RANKLOOP_REPO_URL})`;
 
 // Same bounds as autocomplete's, widened at the top: a question title is a
 // sentence, and 120 chars is where a title stops being a keyword.

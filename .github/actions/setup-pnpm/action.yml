@@ -1,0 +1,57 @@
+name: Setup Node and pnpm
+description: >-
+  Node 22 plus BOTH pnpm versions this repo pins, prepared through corepack so
+  each pnpm root gets the version it asked for.
+
+# WHY THIS IS NOT JUST `pnpm/action-setup`.
+#
+# There are two pnpm roots in this repo and they pin different versions:
+#
+#   package.json                 -> packageManager: pnpm@10.22.0   (workspace)
+#   apps/dashboard/package.json  -> packageManager: pnpm@10.30.1   (vendored fork)
+#
+# `pnpm/action-setup` puts ONE pnpm on PATH for the whole job, which silently
+# runs the wrong version in one of the two roots. corepack instead resolves the
+# version from the nearest package.json at call time, so `pnpm install` does the
+# right thing in both — the same trick Dockerfile.selfhost uses, for the same
+# reason. Versions are READ from the manifests rather than hardcoded here, so a
+# bump to either `packageManager` field cannot drift away from CI.
+#
+# setup-node runs twice on purpose: `cache: pnpm` needs a working `pnpm` on PATH
+# to resolve the store directory, and pnpm does not exist until corepack has run.
+# The second call is a cache hit for the toolchain itself and costs ~1s.
+
+runs:
+  using: composite
+  steps:
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+
+    - name: Prepare both pinned pnpm versions via corepack
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: |
+        set -euo pipefail
+        corepack enable
+        for manifest in package.json apps/dashboard/package.json; do
+          spec="$(node -p "require('./$manifest').packageManager || ''")"
+          case "$spec" in
+            pnpm@*) ;;
+            *) echo "::error::$manifest has no pnpm packageManager pin (got '${spec:-<empty>}')"; exit 1 ;;
+          esac
+          echo "preparing $spec (from $manifest)"
+          corepack prepare "$spec" --activate
+        done
+
+    - name: Enable the pnpm store cache
+      uses: actions/setup-node@v4
+      with:
+        node-version: 22
+        cache: pnpm
+        # All three lockfiles, because all three installs share one store.
+        cache-dependency-path: |
+          pnpm-lock.yaml
+          apps/dashboard/pnpm-lock.yaml
+          apps/dashboard/web/pnpm-lock.yaml

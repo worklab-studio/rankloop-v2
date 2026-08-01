@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { type ThemePreference, useThemePreference } from "@/client/lib/theme";
 import { authClient, useSession } from "@/lib/auth-client";
 import { isHostedClientAuthMode } from "@/lib/auth-mode";
+import { RANKLOOP_REPO_URL, UPSTREAM_REPO_URL } from "@/shared/product";
 import { version } from "../../../package.json";
 
 export const Route = createFileRoute("/_app/settings")({
@@ -96,7 +97,7 @@ function SettingsPage() {
             </h2>
             <div className="flex items-start justify-between gap-6">
               <div>
-                <p className="text-sm">Help improve OpenSEO</p>
+                <p className="text-sm">Help improve rankloop</p>
                 <p className="mt-1 text-sm text-base-content/60">
                   Share analytics and usage data.
                 </p>
@@ -113,17 +114,45 @@ function SettingsPage() {
               />
             </div>
           </section>
-        ) : (
-          <section className="space-y-3">
-            <h2 className="text-sm font-medium text-base-content/50">About</h2>
-            <div className="flex items-center justify-between gap-6">
-              <span className="text-sm">Version</span>
-              <span className="font-mono text-sm text-base-content/60">
-                v{version}
-              </span>
-            </div>
-          </section>
-        )}
+        ) : null}
+
+        {/* About is unconditional now. Hosted used to hide it, which meant the
+            one place that says what you are running (and what it is built on)
+            was invisible to hosted users. */}
+        <section className="space-y-3">
+          <h2 className="text-sm font-medium text-base-content/50">About</h2>
+          <div className="flex items-center justify-between gap-6">
+            <span className="text-sm">rankloop</span>
+            <span className="font-mono text-sm text-base-content/60">
+              v{version}
+            </span>
+          </div>
+          <p className="text-sm text-base-content/60 leading-relaxed">
+            rankloop is a fork of{" "}
+            <a
+              href={UPSTREAM_REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="link link-primary"
+            >
+              OpenSEO
+            </a>{" "}
+            by Ben Senescu, used under the MIT License. The keyword research,
+            SERP, backlink, rank tracking, site audit, and MCP surfaces are
+            OpenSEO's work; the pipeline, articles, and receipts are rankloop's.
+          </p>
+          <p className="text-sm text-base-content/60 leading-relaxed">
+            rankloop's own source:{" "}
+            <a
+              href={RANKLOOP_REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="link link-primary"
+            >
+              worklab-studio/rankloop-v2
+            </a>
+          </p>
+        </section>
       </div>
     </div>
   );

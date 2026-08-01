@@ -5,6 +5,11 @@
  * (issues UI, CSV export). Each issue row in `audit_issues` references one
  * of these types by id.
  */
+// Relative, NOT the `@/` alias: badseo/src/lib.ts imports this file by path
+// (`../../src/shared/audit-issues`), and badseo is a separate vite/tsconfig
+// project that defines no `@/*` mapping. An aliased import here type-errors
+// and fails badseo's build; a sibling import resolves in both projects.
+import { AUDIT_CRAWLER_NAME } from "./product";
 
 export type IssueSeverity = "critical" | "warning" | "info";
 
@@ -21,8 +26,7 @@ export const AUDIT_ISSUE_TYPES = {
     title: "Crawler was blocked",
     explanation:
       "The site returned a bot challenge or access denial (e.g. a Cloudflare challenge, 403, or 429) instead of the page. We report this honestly rather than pretending the page is broken — but it means this page could not be audited, and other crawlers like search engines may face similar friction.",
-    howToFix:
-      'If you own this site, allowlist the "OpenSEO-Audit" user agent in your WAF/bot-protection settings (on Cloudflare: a WAF custom rule that skips bot protection when the user agent contains "OpenSEO-Audit"; on some free tiers you may need to relax bot protection). Then re-run the audit.',
+    howToFix: `If you own this site, allowlist the "${AUDIT_CRAWLER_NAME}" user agent in your WAF/bot-protection settings (on Cloudflare: a WAF custom rule that skips bot protection when the user agent contains "${AUDIT_CRAWLER_NAME}"; on some free tiers you may need to relax bot protection). Then re-run the audit.`,
   },
   "server-error": {
     severity: "critical",

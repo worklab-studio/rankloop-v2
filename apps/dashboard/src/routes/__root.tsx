@@ -40,7 +40,7 @@ export const Route = createRootRoute({
   head: () => ({
     meta: [
       {
-        title: "OpenSEO",
+        title: "rankloop",
       },
       {
         charSet: "utf-8",
