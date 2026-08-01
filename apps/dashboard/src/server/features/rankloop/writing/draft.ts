@@ -6,6 +6,7 @@ import type { TemplateContract } from "@/server/features/rankloop/page-plan/cont
 import { openRouterCostUsd } from "@/server/lib/chatAgent";
 import {
   buildChatAgentModel,
+  getZdrPreference,
   DEFAULT_CHAT_AGENT_MODEL,
 } from "@/server/lib/openrouter";
 import {
@@ -295,7 +296,14 @@ async function resolveModel(
   modelOverride: string | null,
 ): Promise<LanguageModelV3> {
   const apiKey = await getRequiredEnvValue("OPENROUTER_API_KEY");
-  return buildChatAgentModel(apiKey, await resolveWriterModelId(modelOverride));
+  return buildChatAgentModel(
+    apiKey,
+    await resolveWriterModelId(modelOverride),
+    // The writer is the one path an operator points at a `:free` model, and
+    // free models are excluded by ZDR routing by construction. Honor the
+    // opt-out here or a self-host BYO-key install can never write a word.
+    await getZdrPreference(),
+  );
 }
 
 /**

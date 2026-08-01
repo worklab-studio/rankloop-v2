@@ -39,7 +39,22 @@ export const DEFAULT_CHAT_AGENT_MODEL = "minimax/minimax-m3";
 export async function getChatAgentModel(): Promise<LanguageModelV3> {
   const apiKey = await getRequiredEnvValue("OPENROUTER_API_KEY");
   const modelId = await getOptionalEnvValue("OPENROUTER_MODEL");
-  return buildChatAgentModel(apiKey, modelId);
+  return buildChatAgentModel(apiKey, modelId, await getZdrPreference());
+}
+
+/**
+ * Self-host escape hatch for the ZDR constraint above. Free models (`:free`)
+ * are free BECAUSE they retain prompts, so `zdr: true` excludes every one of
+ * them and any request routed at one fails with "No endpoints found matching
+ * your data policy" — a message that points at the OpenRouter dashboard even
+ * though the constraint came from OUR request. On a self-host install with a
+ * BYO key the operator's prompts are their own, so let them opt out.
+ * Default stays true: a hosted deployment handles other people's data.
+ */
+export async function getZdrPreference(): Promise<boolean> {
+  const raw = (await getOptionalEnvValue("OPENROUTER_ZDR"))?.trim().toLowerCase();
+  if (raw === "false" || raw === "0" || raw === "off") return false;
+  return true;
 }
 
 /**
@@ -50,13 +65,16 @@ export async function getChatAgentModel(): Promise<LanguageModelV3> {
 export function buildChatAgentModel(
   apiKey: string,
   modelId?: string,
+  zdr = true,
 ): LanguageModelV3 {
   return createOpenRouter({ apiKey })(modelId ?? DEFAULT_CHAT_AGENT_MODEL, {
     usage: { include: true },
     reasoning: { effort: "medium" },
     provider: {
-      order: ["together", "atlas-cloud/fp8"],
-      zdr: true,
+      // The order preference only applies to the ZDR set; with zdr off the
+      // operator has opted into the whole pool, so pinning two providers
+      // would just re-narrow it for no reason.
+      ...(zdr ? { order: ["together", "atlas-cloud/fp8"], zdr: true } : {}),
       allow_fallbacks: true,
     },
   });
