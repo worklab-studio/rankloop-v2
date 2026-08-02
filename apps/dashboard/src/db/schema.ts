@@ -132,6 +132,7 @@ export const {
   contentPages,
   serpSnapshots,
   indexationChecks,
+  aiAccessSnapshots,
   competitors,
   competitorPages,
   competitorLinkDomains,

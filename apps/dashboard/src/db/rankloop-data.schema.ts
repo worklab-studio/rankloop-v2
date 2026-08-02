@@ -193,3 +193,51 @@ export const indexationChecks = sqliteTable(
     ),
   ],
 );
+
+// One AI access probe (spec 0027). Kept as history rather than a single
+// mutable row per project: "GPTBot was allowed until the 12th" is the
+// question a user asks after traffic moves, and a row that is overwritten
+// each run cannot answer it.
+//
+// The summary columns are the ones the verdict card reads and the payload is
+// the whole probe. Both, deliberately — querying "which projects block an AI
+// agent" across a JSON blob is a table scan, and re-deriving the card from
+// the blob on every render puts parsing on the read path.
+export const aiAccessSnapshots = sqliteTable(
+  "ai_access_snapshots",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    // The origin the site actually serves from, after redirects. Stored
+    // because it is frequently NOT the domain the user typed — an apex that
+    // 308s to www is the common case, and every later fetch has to use this.
+    canonicalOrigin: text("canonical_origin").notNull(),
+    redirected: integer("redirected", { mode: "boolean" }).notNull(),
+    reachable: integer("reachable", { mode: "boolean" }).notNull(),
+    // ok | absent | unavailable. Not a boolean: a 404 means everything is
+    // permitted, a 5xx means crawlers must back off. Opposite meanings.
+    robotsState: text("robots_state", {
+      enum: ["ok", "absent", "unavailable"],
+    }).notNull(),
+    robotsText: text("robots_text"),
+    blockedAgents: integer("blocked_agents").notNull(),
+    llmsTxtPresent: integer("llms_txt_present", { mode: "boolean" }).notNull(),
+    llmsFullPresent: integer("llms_full_present", { mode: "boolean" }).notNull(),
+    edgeBlocked: integer("edge_blocked", { mode: "boolean" }).notNull(),
+    // Words of text found in the raw HTML. Nullable because the homepage
+    // fetch can fail outright, which is not the same as finding zero words.
+    htmlWords: integer("html_words"),
+    payload: text("payload", { mode: "json" }).notNull(),
+    createdAt: text("created_at")
+      .notNull()
+      .default(sql`(current_timestamp)`),
+  },
+  (table) => [
+    index("ai_access_snapshots_project_created_idx").on(
+      table.projectId,
+      table.createdAt,
+    ),
+  ],
+);

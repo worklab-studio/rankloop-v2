@@ -225,6 +225,13 @@
       "when": 1785548277727,
       "tag": "0031_tricky_songbird",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1785657457970,
+      "tag": "0032_ancient_jasper_sitwell",
+      "breakpoints": true
     }
   ]
 }

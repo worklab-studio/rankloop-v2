@@ -1,7 +1,9 @@
 import { sql } from "drizzle-orm";
 import {
+  boolean,
   index,
   integer,
+  jsonb,
   pgTable,
   real,
   serial,
@@ -190,6 +192,52 @@ export const indexationChecks = pgTable(
       table.projectId,
       table.url,
       table.checkedAt,
+    ),
+  ],
+);
+
+// One AI access probe (spec 0027). Kept as history rather than a single
+// mutable row per project: "GPTBot was allowed until the 12th" is the
+// question a user asks after traffic moves, and a row that is overwritten
+// each run cannot answer it.
+//
+// The summary columns are the ones the verdict card reads and the payload is
+// the whole probe. Both, deliberately — querying "which projects block an AI
+// agent" across a JSON blob is a table scan, and re-deriving the card from
+// the blob on every render puts parsing on the read path.
+export const aiAccessSnapshots = pgTable(
+  "ai_access_snapshots",
+  {
+    id: text("id").primaryKey(),
+    projectId: text("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    // The origin the site actually serves from, after redirects. Stored
+    // because it is frequently NOT the domain the user typed — an apex that
+    // 308s to www is the common case, and every later fetch has to use this.
+    canonicalOrigin: text("canonical_origin").notNull(),
+    redirected: boolean("redirected").notNull(),
+    reachable: boolean("reachable").notNull(),
+    // ok | absent | unavailable. Not a boolean: a 404 means everything is
+    // permitted, a 5xx means crawlers must back off. Opposite meanings.
+    robotsState: text("robots_state", {
+      enum: ["ok", "absent", "unavailable"],
+    }).notNull(),
+    robotsText: text("robots_text"),
+    blockedAgents: integer("blocked_agents").notNull(),
+    llmsTxtPresent: boolean("llms_txt_present").notNull(),
+    llmsFullPresent: boolean("llms_full_present").notNull(),
+    edgeBlocked: boolean("edge_blocked").notNull(),
+    // Words of text found in the raw HTML. Nullable because the homepage
+    // fetch can fail outright, which is not the same as finding zero words.
+    htmlWords: integer("html_words"),
+    payload: jsonb("payload").notNull(),
+    createdAt: text("created_at").notNull().default(isoNow),
+  },
+  (table) => [
+    index("ai_access_snapshots_project_created_idx").on(
+      table.projectId,
+      table.createdAt,
     ),
   ],
 );
