@@ -18,6 +18,12 @@ import {
 
 export type Severity = "critical" | "warning";
 
+/** Only true of robots.txt, which is the one file rankloop fences a block
+ *  inside. Stated on the finding rather than in the UI, so a patch for a
+ *  file with no managed block never inherits the claim. */
+const REAPPLY_NOTE =
+  "Re-applying it replaces rankloop's block rather than adding a second one.";
+
 /** Every fix is an artifact. `patch` is a file we can write, `manual` is a
  *  change only the user can make (a dashboard toggle, a server config), and
  *  `list` is the set of URLs a finding is about. */
@@ -141,8 +147,8 @@ export function aiAccessFindings(input: FindingsInput): Finding[] {
       detail: `${listAgents(retrieval.map((a) => a.agent.name))} fetch pages to answer questions and cite sources. Blocked, your pages cannot be quoted in those answers. ${describeRules(retrieval)}`,
       fix: robotsPatch(
         plan.preserved.length > 0
-          ? `Your existing restrictions (${plan.preserved.join(", ")}) are copied into each new group, so this grants access to the same paths a browser already has and nothing more.`
-          : "This grants the same access a browser already has.",
+          ? `Your existing restrictions (${plan.preserved.join(", ")}) are copied into each new group, so this grants access to the same paths a browser already has and nothing more. ${REAPPLY_NOTE}`
+          : `This grants the same access a browser already has. ${REAPPLY_NOTE}`,
       ),
     });
   }
@@ -156,7 +162,9 @@ export function aiAccessFindings(input: FindingsInput): Finding[] {
       severity: "warning",
       title: `${training.length} AI training ${training.length === 1 ? "crawler is" : "crawlers are"} blocked`,
       detail: `${listAgents(training.map((a) => a.agent.name))} collect pages for model training. Many sites block these on purpose — if that was the intent, nothing here needs doing. ${describeRules(training)}`,
-      fix: robotsPatch("Only apply this if you want these crawlers to have access."),
+      fix: robotsPatch(
+        `Only apply this if you want these crawlers to have access. ${REAPPLY_NOTE}`,
+      ),
     });
   }
 
@@ -197,7 +205,7 @@ export function aiAccessFindings(input: FindingsInput): Finding[] {
       title: `${missingLlms.map((f) => f.path).join(" and ")} ${missingLlms.length === 1 ? "is" : "are"} missing`,
       detail:
         input.corpus.length > 0
-          ? `An llms.txt lists your pages in one place for AI agents. Generated below from the ${input.corpus.length} pages we crawled.`
+          ? `An llms.txt lists your pages in one place for AI agents. Generated below from the ${input.corpus.length} ${input.corpus.length === 1 ? "page" : "pages"} we crawled.`
           : "An llms.txt lists your pages in one place for AI agents. We have not crawled your site yet, so the file below is the minimum valid version — re-run this after a site study for the full listing.",
       fix: {
         kind: "patch",

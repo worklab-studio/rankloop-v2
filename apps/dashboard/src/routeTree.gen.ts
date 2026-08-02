@@ -51,6 +51,7 @@ import { Route as ProjectPProjectIdBrandLookupRouteImport } from './routes/_proj
 import { Route as ProjectPProjectIdBacklinksRouteImport } from './routes/_project/p/$projectId/backlinks'
 import { Route as ProjectPProjectIdAuditRouteImport } from './routes/_project/p/$projectId/audit'
 import { Route as ProjectPProjectIdArticlesRouteImport } from './routes/_project/p/$projectId/articles'
+import { Route as ProjectPProjectIdAiAccessRouteImport } from './routes/_project/p/$projectId/ai-access'
 import { Route as ProjectPProjectIdRankTrackingIndexRouteImport } from './routes/_project/p/$projectId/rank-tracking/index'
 import { Route as ProjectPProjectIdPlanIndexRouteImport } from './routes/_project/p/$projectId/plan/index'
 import { Route as ProjectPProjectIdAuditIndexRouteImport } from './routes/_project/p/$projectId/audit/index'
@@ -279,6 +280,12 @@ const ProjectPProjectIdArticlesRoute =
     path: '/articles',
     getParentRoute: () => ProjectPProjectIdRouteRoute,
   } as any)
+const ProjectPProjectIdAiAccessRoute =
+  ProjectPProjectIdAiAccessRouteImport.update({
+    id: '/ai-access',
+    path: '/ai-access',
+    getParentRoute: () => ProjectPProjectIdRouteRoute,
+  } as any)
 const ProjectPProjectIdRankTrackingIndexRoute =
   ProjectPProjectIdRankTrackingIndexRouteImport.update({
     id: '/',
@@ -351,6 +358,7 @@ export interface FileRoutesByFullPath {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/p/$projectId/ai-access': typeof ProjectPProjectIdAiAccessRoute
   '/p/$projectId/articles': typeof ProjectPProjectIdArticlesRouteWithChildren
   '/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -398,6 +406,7 @@ export interface FileRoutesByTo {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/onboarding': typeof AuthenticatedOnboardingIndexRoute
+  '/p/$projectId/ai-access': typeof ProjectPProjectIdAiAccessRoute
   '/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
   '/p/$projectId/brand-lookup': typeof ProjectPProjectIdBrandLookupRoute
   '/p/$projectId/domain': typeof ProjectPProjectIdDomainRoute
@@ -447,6 +456,7 @@ export interface FileRoutesById {
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/autumn/$': typeof ApiAutumnSplatRoute
   '/_authenticated/onboarding/': typeof AuthenticatedOnboardingIndexRoute
+  '/_project/p/$projectId/ai-access': typeof ProjectPProjectIdAiAccessRoute
   '/_project/p/$projectId/articles': typeof ProjectPProjectIdArticlesRouteWithChildren
   '/_project/p/$projectId/audit': typeof ProjectPProjectIdAuditRouteWithChildren
   '/_project/p/$projectId/backlinks': typeof ProjectPProjectIdBacklinksRoute
@@ -497,6 +507,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/onboarding/'
+    | '/p/$projectId/ai-access'
     | '/p/$projectId/articles'
     | '/p/$projectId/audit'
     | '/p/$projectId/backlinks'
@@ -544,6 +555,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/onboarding'
+    | '/p/$projectId/ai-access'
     | '/p/$projectId/backlinks'
     | '/p/$projectId/brand-lookup'
     | '/p/$projectId/domain'
@@ -592,6 +604,7 @@ export interface FileRouteTypes {
     | '/api/auth/$'
     | '/api/autumn/$'
     | '/_authenticated/onboarding/'
+    | '/_project/p/$projectId/ai-access'
     | '/_project/p/$projectId/articles'
     | '/_project/p/$projectId/audit'
     | '/_project/p/$projectId/backlinks'
@@ -929,6 +942,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ProjectPProjectIdArticlesRouteImport
       parentRoute: typeof ProjectPProjectIdRouteRoute
     }
+    '/_project/p/$projectId/ai-access': {
+      id: '/_project/p/$projectId/ai-access'
+      path: '/ai-access'
+      fullPath: '/p/$projectId/ai-access'
+      preLoaderRoute: typeof ProjectPProjectIdAiAccessRouteImport
+      parentRoute: typeof ProjectPProjectIdRouteRoute
+    }
     '/_project/p/$projectId/rank-tracking/': {
       id: '/_project/p/$projectId/rank-tracking/'
       path: '/'
@@ -1083,6 +1103,7 @@ const ProjectPProjectIdRankTrackingRouteWithChildren =
   )
 
 interface ProjectPProjectIdRouteRouteChildren {
+  ProjectPProjectIdAiAccessRoute: typeof ProjectPProjectIdAiAccessRoute
   ProjectPProjectIdArticlesRoute: typeof ProjectPProjectIdArticlesRouteWithChildren
   ProjectPProjectIdAuditRoute: typeof ProjectPProjectIdAuditRouteWithChildren
   ProjectPProjectIdBacklinksRoute: typeof ProjectPProjectIdBacklinksRoute
@@ -1102,6 +1123,7 @@ interface ProjectPProjectIdRouteRouteChildren {
 
 const ProjectPProjectIdRouteRouteChildren: ProjectPProjectIdRouteRouteChildren =
   {
+    ProjectPProjectIdAiAccessRoute: ProjectPProjectIdAiAccessRoute,
     ProjectPProjectIdArticlesRoute: ProjectPProjectIdArticlesRouteWithChildren,
     ProjectPProjectIdAuditRoute: ProjectPProjectIdAuditRouteWithChildren,
     ProjectPProjectIdBacklinksRoute: ProjectPProjectIdBacklinksRoute,

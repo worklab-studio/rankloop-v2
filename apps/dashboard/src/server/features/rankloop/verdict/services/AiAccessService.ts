@@ -20,8 +20,10 @@ export interface AiAccessAgentRow {
   operator: string;
   purpose: "training" | "search" | "user-fetch";
   allowed: boolean;
-  /** The robots.txt line that decided, when one did. */
-  rule: { pattern: string; line: number } | null;
+  /** The robots.txt line that decided, when one did. Carries the directive
+   *  as well as the pattern: rendered as a bare path, an `Allow: /` reads
+   *  like a restriction, which is the opposite of what it says. */
+  rule: { type: "allow" | "disallow"; pattern: string; line: number } | null;
 }
 
 export interface AiAccessCard {
@@ -63,11 +65,7 @@ function toAgentRows(probe: AiAccessProbe): AiAccessAgentRow[] {
     operator: v.agent.operator,
     purpose: v.agent.purpose,
     allowed: !v.blocked,
-    rule: v.root.rule
-      ? { pattern: v.root.rule.pattern, line: v.root.rule.line }
-      : v.blog.rule
-        ? { pattern: v.blog.rule.pattern, line: v.blog.rule.line }
-        : null,
+    rule: v.root.rule ?? v.blog.rule ?? null,
   }));
 }
 
