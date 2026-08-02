@@ -29,3 +29,8 @@ export const saveRankloopKitSchema = z.object({
     launchDate: z.string().max(40).nullable(),
   }),
 });
+
+export const mineRankloopArmorySchema = z.object({
+  projectId: z.string().uuid(),
+  year: z.number().int().min(2000).max(2100),
+});

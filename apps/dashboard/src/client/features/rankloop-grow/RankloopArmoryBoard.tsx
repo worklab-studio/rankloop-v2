@@ -1,9 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Copy, ExternalLink, RefreshCw, Sparkles } from "lucide-react";
+import { Check, Copy, ExternalLink, RefreshCw, Search, Sparkles } from "lucide-react";
 import { useState } from "react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   getRankloopArmory,
+  mineRankloopArmory,
   seedRankloopArmory,
   verifyRankloopLinks,
 } from "@/serverFunctions/rankloopArmory";
@@ -176,6 +177,13 @@ export function RankloopArmoryBoard({ projectId }: { projectId: string }) {
     mutationFn: () => verifyRankloopLinks({ data: { projectId } }),
     onSuccess: (result) => setBoard(result.board),
   });
+  const mine = useMutation({
+    mutationFn: () =>
+      // The year belongs to the caller so "{noun} tools 2026" is not decided
+      // by a clock buried in a query builder.
+      mineRankloopArmory({ data: { projectId, year: new Date().getFullYear() } }),
+    onSuccess: (result) => setBoard(result.board),
+  });
 
   if (boardQuery.isPending) {
     return <div className="skeleton h-64 rounded-xl" />;
@@ -245,13 +253,44 @@ export function RankloopArmoryBoard({ projectId }: { projectId: string }) {
           <button
             type="button"
             className="btn btn-sm btn-ghost"
-            disabled={seed.isPending}
-            onClick={() => seed.mutate()}
+            disabled={mine.isPending}
+            onClick={() => mine.mutate()}
+            title="Search for roundups and directories that already rank in your category"
           >
-            Add more
+            <Search className={`size-3.5 ${mine.isPending ? "animate-pulse" : ""}`} />
+            {mine.isPending ? "Searching…" : "Find roundups"}
           </button>
         </div>
       </div>
+
+      {mine.isSuccess ? (
+        <p className="text-xs text-base-content/60">
+          {mine.data.queries === 0
+            ? "Ran 0 searches · approve a page type first so rankloop knows what to search for"
+            : `Ran ${mine.data.succeeded} of ${mine.data.queries} searches ($${mine.data.costUsd.toFixed(3)})`}
+          {mine.data.queries > 0
+            ? ` · ${
+                mine.data.discovered > 0
+                  ? `found ${mine.data.discovered} new place${mine.data.discovered === 1 ? "" : "s"}`
+                  : "nothing new — the roundups in your category are already on the board"
+              }`
+            : ""}
+          {/* A run that quietly searched four of six reads as a thin
+              category rather than a provider hiccup, and the failures were
+              billed either way. */}
+          {mine.data.failedQueries.length > 0 ? (
+            <span className="text-warning">
+              {" · "}
+              {mine.data.failedQueries.length === 1
+                ? "1 search failed at the provider and was still charged"
+                : `${mine.data.failedQueries.length} searches failed at the provider and were still charged`}
+            </span>
+          ) : null}
+        </p>
+      ) : null}
+      {mine.isError ? (
+        <p className="text-xs text-error">{getStandardErrorMessage(mine.error)}</p>
+      ) : null}
 
       {verify.isSuccess ? (
         <p className="text-xs text-base-content/60">
