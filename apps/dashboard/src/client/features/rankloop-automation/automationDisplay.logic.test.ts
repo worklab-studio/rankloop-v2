@@ -12,6 +12,8 @@ import {
   pauseCopy,
   trustDialCopy,
   unattendedCapsCopy,
+  hasEarnedAnything,
+  nothingEarnedYetCopy,
 } from "./automationDisplay.logic";
 
 const NOW = Date.parse("2026-08-01T12:00:00Z");
@@ -144,5 +146,33 @@ describe("pauseCopy", () => {
     expect(pauseCopy({ reason: "autopilot paused", since: "never" }, NOW)).toBe(
       "autopilot paused",
     );
+  });
+});
+
+describe("first-run sequencing", () => {
+  it("says nothing is earned when no receipt has settled", () => {
+    // The state a user meets seconds after adding a domain: six action types,
+    // all at zero. The card must state that once, not six times.
+    const types = [
+      { measured: 0 },
+      { measured: 0 },
+      { measured: 0 },
+      { measured: 0 },
+    ];
+    expect(hasEarnedAnything(types)).toBe(false);
+  });
+
+  it("switches to the per-type breakdown as soon as one type has a result", () => {
+    expect(hasEarnedAnything([{ measured: 0 }, { measured: 1 }])).toBe(true);
+  });
+
+  it("names the unlock rule and the reason today is not it", () => {
+    const copy = nothingEarnedYetCopy();
+    expect(copy).toMatch(/five of its results/);
+    expect(copy).toMatch(/90 days/);
+    expect(copy).toMatch(/nothing has published/);
+    // Deliberately no em-dash assertion here: that law governs generated
+    // articles, where the dash is an LLM tell. The product's own copy uses it
+    // in house voice, three lines above this card.
   });
 });

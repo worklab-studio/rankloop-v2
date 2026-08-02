@@ -208,3 +208,36 @@ export function pauseCopy(
   const ago = pausedAgo(pause.since, now);
   return ago === null ? pause.reason : `${pause.reason} · ${ago}`;
 }
+
+/**
+ * Has this project ever produced a result the automation surface can talk
+ * about?
+ *
+ * The trust dial's per-type breakdown is six rows of arithmetic over measured
+ * receipts. On a project that has published nothing, every row reads "needs 5
+ * measured results, has 0" — six restatements of one fact, in a card the
+ * operator met thirty seconds after adding a domain. The facts are right; the
+ * volume is wrong, and a first screen that reads like a control panel for
+ * machinery that cannot move yet teaches people to skip the card entirely.
+ *
+ * So the surface asks this first and states the one fact once, keeping the
+ * breakdown a click away rather than deleting it. It is derived from data the
+ * screen already holds — no new endpoint, and no second opinion about what
+ * "measured" means.
+ */
+export function hasEarnedAnything(
+  types: readonly { measured: number }[],
+): boolean {
+  return types.some((type) => type.measured > 0);
+}
+
+/** The one-sentence stand-in for the per-type list, before any receipt has
+ *  settled. Says what unlocks autopilot and why today is not that day. */
+export function nothingEarnedYetCopy(): string {
+  return (
+    "No action type has earned unattended running yet. Each one unlocks on " +
+    "its own, once five of its results have settled — that is 90 days after " +
+    "a change goes live, so this is a slow thing to earn and nothing has " +
+    "published here yet."
+  );
+}

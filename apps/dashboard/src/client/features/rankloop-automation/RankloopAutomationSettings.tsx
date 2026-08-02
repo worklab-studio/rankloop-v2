@@ -7,7 +7,9 @@ import { RankloopDigestDelivery } from "@/client/features/rankloop-automation/Ra
 import {
   behaviorDotClass,
   dispatcherCopy,
+  hasEarnedAnything,
   nextRunCopy,
+  nothingEarnedYetCopy,
   pauseCopy,
   trustDialCopy,
   unattendedCapsCopy,
@@ -54,9 +56,17 @@ function DispatcherSection({ projectId }: { projectId: string }) {
               {nextRunCopy(dispatcher.nextRunAt)}
             </span>
           </p>
-          <p className="text-xs text-base-content/55">
-            {dispatcherCopy(dispatcher).detail}
-          </p>
+          {/* Which mechanism honours the schedule matters to whoever
+              deployed this; on the first morning it is trivia sitting above
+              the thing the operator came to read. Available, not shouted. */}
+          <details className="group">
+            <summary className="cursor-pointer text-xs text-base-content/45 hover:text-base-content/70">
+              How this deployment runs it
+            </summary>
+            <p className="mt-1 text-xs text-base-content/55">
+              {dispatcherCopy(dispatcher).detail}
+            </p>
+          </details>
         </>
       ) : dispatcherQuery.isError ? (
         <p className="text-sm text-base-content/60">
@@ -105,15 +115,39 @@ function TrustDialSection({
   return (
     <Section title="Trust dial">
       <p className="text-sm">{trustDialCopy(status.trustDial)}</p>
-      <BehaviorList types={status.types} />
+      {hasEarnedAnything(status.types) ? (
+        <BehaviorList types={status.types} />
+      ) : (
+        <>
+          <p className="text-sm text-base-content/70">
+            {nothingEarnedYetCopy()}
+          </p>
+          <details className="group">
+            <summary className="cursor-pointer text-xs text-base-content/45 hover:text-base-content/70">
+              What each action type is waiting for
+            </summary>
+            <div className="mt-2">
+              <BehaviorList types={status.types} />
+            </div>
+          </details>
+        </>
+      )}
+      {/* The legend explains the dot list, so it travels with it: printed
+          beside a collapsed list it describes something the reader cannot
+          see. What survives in both states is the one link that lets them
+          act. */}
       <p className="text-xs text-base-content/55">
-        A filled dot is an action type running unattended today; the clause
-        beside each name is what its own receipts say.{" "}
-        {status.trustDial === "autopilot"
-          ? "A type publishes on its own the day its receipts say it works, and not before — the dial can't grant it early."
-          : "This is what moving the dial to Autopilot would, and wouldn't, unlock today."}{" "}
-        Receipts settle 90 days after their window closes, so a young site earns
-        this slowly.{" "}
+        {hasEarnedAnything(status.types) ? (
+          <>
+            A filled dot is an action type running unattended today; the clause
+            beside each name is what its own receipts say.{" "}
+            {status.trustDial === "autopilot"
+              ? "A type publishes on its own the day its receipts say it works, and not before — the dial can't grant it early."
+              : "This is what moving the dial to Autopilot would, and wouldn't, unlock today."}{" "}
+            Receipts settle 90 days after their window closes, so a young site
+            earns this slowly.{" "}
+          </>
+        ) : null}
         <Link
           to="/p/$projectId/articles"
           params={{ projectId }}
@@ -259,7 +293,13 @@ export function RankloopAutomationSettings({
           <>
             <PauseAlert projectId={projectId} status={status} />
             <TrustDialSection projectId={projectId} status={status} />
-            <UnattendedRunSection projectId={projectId} />
+            {/* Caps on unattended work are worth stating before they bind —
+                but not to a project where nothing can run unattended at all.
+                Until a type has earned it, this section describes a machine
+                that cannot move, which is how a true paragraph becomes noise. */}
+            {hasEarnedAnything(status.types) ? (
+              <UnattendedRunSection projectId={projectId} />
+            ) : null}
           </>
         ) : statusQuery.isError ? (
           <p className="text-sm text-base-content/60">
