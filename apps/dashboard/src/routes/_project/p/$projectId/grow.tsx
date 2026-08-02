@@ -1,17 +1,16 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { RankloopOutreachTab } from "@/client/features/rankloop-plan/RankloopOutreachTab";
+import { RankloopArmoryBoard } from "@/client/features/rankloop-grow/RankloopArmoryBoard";
 
 export const Route = createFileRoute("/_project/p/$projectId/grow")({
   component: GrowPage,
 });
 
-// Off-page: where links and listings can come from (spec 0028).
+// Off-page: where links and listings can come from (specs 0028, 0029).
 //
-// Today this is the link gap alone — domains linking to two or more of your
-// competitors but not to you. Phase 2 adds the other two lanes (a curated
-// directory pack and SERP-mined listicles) to the same board. The page
-// exists now because the link gap was buried as a fourth tab under Plan,
-// where nobody looking for "how do I get backlinks" would ever find it.
+// One board over three lanes — the checked directory pack, pages your
+// competitors are already linked from, and SERP-mined roundups. It was
+// previously the link gap alone, buried as a fourth tab under Plan, where
+// nobody looking for "how do I get backlinks" would ever find it.
 function GrowPage() {
   const { projectId } = Route.useParams();
   return (
@@ -24,7 +23,7 @@ function GrowPage() {
             drafts the message; you decide what to send.
           </p>
         </div>
-        <RankloopOutreachTab projectId={projectId} />
+        <RankloopArmoryBoard projectId={projectId} />
       </div>
     </div>
   );

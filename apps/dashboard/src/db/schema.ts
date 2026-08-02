@@ -137,6 +137,7 @@ export const {
   competitorPages,
   competitorLinkDomains,
   outreachTargets,
+  submissionKits,
   projectGate,
   keywordBacklog,
   pageTypes,
