@@ -1,6 +1,7 @@
 import { symmetricDecrypt, symmetricEncrypt } from "better-auth/crypto";
 import { getAuth } from "@/lib/auth";
 import {
+  type GitHubAdapterConfig,
   parseAdapterConfig,
   type PublishAdapterConfig,
 } from "@/server/features/rankloop/publish/adapters/config";
@@ -300,9 +301,26 @@ async function probe(config: PublishAdapterConfig): Promise<void> {
   }
 }
 
+/**
+ * The decrypted GitHub config, or null when this project publishes some
+ * other way.
+ *
+ * Mirrors `getDecryptedConfig` for WordPress rather than exposing
+ * `readStoredConfig`: a caller that can reach every adapter's secrets is a
+ * caller that can leak the wrong one, and repo mode only ever needs this.
+ */
+async function getDecryptedGitHubConfig(
+  projectId: string,
+): Promise<GitHubAdapterConfig | null> {
+  const config = await readStoredConfig(projectId);
+  if (!config || config.adapter !== "github") return null;
+  return config;
+}
+
 export const PublishConnectionService = {
   saveConnection,
   getMaskedConnection,
   getDecryptedConfig,
+  getDecryptedGitHubConfig,
   testConnection,
 };

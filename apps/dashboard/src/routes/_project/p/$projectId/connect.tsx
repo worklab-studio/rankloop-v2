@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { RankloopAutomationSettings } from "@/client/features/rankloop-automation/RankloopAutomationSettings";
+import { RankloopThemePanel } from "@/client/features/rankloop-theme/RankloopThemePanel";
 import { RankloopPublishingSettings } from "@/client/features/rankloop-articles/RankloopPublishingSettings";
 import { RankloopWriterSettings } from "@/client/features/rankloop-articles/RankloopWriterSettings";
 import { SearchConsoleConnectionCard } from "@/client/features/gsc/SearchConsoleConnectionCard";
@@ -47,6 +48,13 @@ function ConnectPage() {
           detail="Which model writes, in whose voice, and how many posts a day. The laws that decide whether a draft ships are not part of this — they never come from the writer."
         >
           <RankloopWriterSettings projectId={projectId} />
+        </Section>
+
+        <Section
+          title="Design"
+          detail="What your blog will look like, read from your own site. rankloop can also open a pull request that puts the blog in your repo, in your framework, styled with these tokens."
+        >
+          <RankloopThemePanel projectId={projectId} />
         </Section>
 
         <Section

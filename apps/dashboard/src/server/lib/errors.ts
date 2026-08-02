@@ -24,7 +24,22 @@ export function asAppError(error: unknown): AppError | null {
 // a full https URL…") that self-hosters need to fix their deployment, and the
 // alternative is a generic card that makes every misconfiguration look the
 // same. Everything else stays stripped to its bare code.
-const CLIENT_DETAIL_ERROR_CODES = new Set<ErrorCode>(["AUTH_CONFIG_MISSING"]);
+/**
+ * Codes whose server-authored message reaches the user.
+ *
+ * The default is to send only the code, so an unexpected failure cannot leak
+ * internals through its message. These are the codes where the detail IS the
+ * value: the generic text for PUBLISH_NOT_CONNECTED cannot know whether the
+ * user needs to connect WordPress or a repository, and the generic text for
+ * VALIDATION_ERROR cannot name the file that was wrong. Every message behind
+ * these codes is written for the user about their own configuration.
+ */
+const CLIENT_DETAIL_ERROR_CODES = new Set<ErrorCode>([
+  "AUTH_CONFIG_MISSING",
+  "PUBLISH_NOT_CONNECTED",
+  "VALIDATION_ERROR",
+  "CONFLICT",
+]);
 
 export function toClientError(error: unknown): Error {
   const appError = asAppError(error);

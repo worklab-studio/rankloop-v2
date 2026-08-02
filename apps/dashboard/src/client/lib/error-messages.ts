@@ -24,10 +24,13 @@ const STANDARD_MESSAGES: Record<ErrorCode, string> = {
     "The connected DataForSEO account has a billing or balance issue.",
   DATAFORSEO_AUTH_FAILED:
     "DataForSEO rejected the API key. Check that DATAFORSEO_API_KEY is the base64 of your DataForSEO login:password.",
+  // Adapter-neutral on purpose. Three adapters raise this code (WordPress,
+  // webhook, GitHub), and naming one of them told a GitHub user to go
+  // connect WordPress.
   PUBLISH_NOT_CONNECTED:
-    "Connect WordPress in Publishing settings before applying changes from here.",
+    "Connect a publishing destination in Publishing settings before applying changes from here.",
   PUBLISH_AUTH_FAILED:
-    "WordPress rejected the credentials. Check the username and application password in Publishing settings.",
+    "Your publishing destination rejected the credentials. Check them in Publishing settings.",
   PUBLISH_UNREACHABLE:
     "Could not reach the WordPress site. Check the site URL and that the REST API is enabled.",
   WRITER_NOT_CONFIGURED:

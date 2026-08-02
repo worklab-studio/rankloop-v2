@@ -121,11 +121,39 @@ export interface ScaffoldFile {
  * `null` for a stack we do not recognise: there is no sensible default path
  * for a framework we cannot name.
  */
+/**
+ * The blog root, safe to put in a file path and in generated source.
+ *
+ * `blogPath` comes from a page type's URL pattern, which is user data, and
+ * it is interpolated into both. A quote in it closes a string literal early
+ * and ships a pull request that does not parse; a `..` in it writes files
+ * outside the blog directory. Reduced to the characters a URL segment can
+ * legitimately contain, and nothing else.
+ */
+export function safeBlogRoot(blogPath: string): string {
+  const segments = blogPath
+    .toLowerCase()
+    .split("/")
+    // Traversal is stripped BEFORE characters are replaced, not after.
+    // Sanitising first turns `..` into `--`, and the traversal check then
+    // matches nothing — `../../etc` sails through as `-/-/etc`. Checking
+    // the segment while it still looks like itself is the whole point.
+    .filter((segment) => segment !== "" && segment !== "." && segment !== "..")
+    .map((segment) =>
+      segment
+        .replace(/[^a-z0-9-]/g, "-")
+        .replace(/-{2,}/g, "-")
+        .replace(/^-+|-+$/g, ""),
+    )
+    .filter((segment) => segment !== "");
+  return segments.length === 0 ? "blog" : segments.join("/");
+}
+
 export function scaffoldPaths(
   stack: StackId,
   blogPath: string,
 ): { index: string; post: string; styles: string } | null {
-  const root = blogPath.replace(/^\/+|\/+$/g, "") || "blog";
+  const root = safeBlogRoot(blogPath);
   switch (stack) {
     case "next-app":
       return {

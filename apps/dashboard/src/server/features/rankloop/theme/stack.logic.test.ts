@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   detectStack,
+  safeBlogRoot,
   planWrites,
   pullRequestBody,
   scaffoldPaths,
@@ -78,6 +79,35 @@ describe("scaffoldPaths()", () => {
 
   it("has no opinion about a framework it cannot name", () => {
     expect(scaffoldPaths("unknown", "blog")).toBeNull();
+  });
+});
+
+describe("safeBlogRoot()", () => {
+  it("strips characters that would break generated source", () => {
+    // The root is interpolated into string literals in the templates. A
+    // quote closes one early and ships a PR that does not parse — caught by
+    // the compile test, fixed here.
+    expect(safeBlogRoot('we"ird')).toBe("we-ird");
+    expect(safeBlogRoot("back`tick")).toBe("back-tick");
+    expect(safeBlogRoot("${injected}")).toBe("injected");
+  });
+
+  it("refuses to escape the blog directory", () => {
+    // blogPath comes from a page type's URL pattern, which is user data.
+    // `../../` in it would write files anywhere in the repo.
+    expect(safeBlogRoot("../../etc")).toBe("etc");
+    expect(safeBlogRoot("./blog")).toBe("blog");
+    expect(safeBlogRoot("..")).toBe("blog");
+  });
+
+  it("keeps a legitimate nested root", () => {
+    expect(safeBlogRoot("/resources/guides/")).toBe("resources/guides");
+  });
+
+  it("normalises case and trims separators", () => {
+    expect(safeBlogRoot("/Blog/")).toBe("blog");
+    expect(safeBlogRoot("")).toBe("blog");
+    expect(safeBlogRoot("   ")).toBe("blog");
   });
 });
 
