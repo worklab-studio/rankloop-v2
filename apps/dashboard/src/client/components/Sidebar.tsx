@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from "@tanstack/react-router";
 import type { LinkOptions } from "@tanstack/react-router";
 import { useEffect, useState, type ComponentType } from "react";
 import {
+  ChevronRight,
   CircleHelp,
   CreditCard,
   LayoutGrid,
@@ -173,25 +174,55 @@ export function Sidebar({ projectId, onNavigate, onClose }: SidebarProps) {
         <SamSidebarPanel projectId={projectId} onNavigate={onNavigate} />
       ) : (
         <nav className="min-h-0 flex-1 overflow-y-auto px-2 py-2">
-          {navGroups.map((group) => (
-            <div key={group.label} className="mb-1">
-              <div className="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wider text-base-content/40">
-                {group.label}
+          {navGroups.map((group) => {
+            const links = group.items.map((item) => {
+              const { icon, label, ...linkProps } = item;
+              return (
+                <SidebarNavLink
+                  key={linkProps.to}
+                  icon={icon}
+                  label={label}
+                  onNavigate={onNavigate}
+                  linkProps={linkProps}
+                />
+              );
+            });
+
+            // The journey group carries no heading. Six items in the order
+            // they happen need no label above them, and an empty header row
+            // would push the first item down for nothing.
+            if (!group.label) {
+              return (
+                <div key="journey" className="mb-1">
+                  {links}
+                </div>
+              );
+            }
+
+            // A collapsible group is a `details` rather than component state:
+            // the browser remembers nothing either way, and this keeps the
+            // sidebar free of a store just to track one disclosure.
+            if (group.collapsible) {
+              return (
+                <details key={group.label} className="group mb-1">
+                  <summary className="flex cursor-pointer list-none items-center gap-1 px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wider text-base-content/40 hover:text-base-content/70">
+                    <ChevronRight className="size-3 transition-transform group-open:rotate-90" />
+                    {group.label}
+                  </summary>
+                  {links}
+                </details>
+              );
+            }
+
+            return (
+              <div key={group.label} className="mb-1">
+                <div className="px-3 pb-1 pt-3 text-xs font-semibold uppercase tracking-wider text-base-content/40">
+                  {group.label}
+                </div>
+                {links}
               </div>
-              {group.items.map((item) => {
-                const { icon, label, ...linkProps } = item;
-                return (
-                  <SidebarNavLink
-                    key={linkProps.to}
-                    icon={icon}
-                    label={label}
-                    onNavigate={onNavigate}
-                    linkProps={linkProps}
-                  />
-                );
-              })}
-            </div>
-          ))}
+            );
+          })}
         </nav>
       )}
 

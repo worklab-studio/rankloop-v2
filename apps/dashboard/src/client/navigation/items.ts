@@ -1,29 +1,42 @@
 import {
-  BarChart3,
   Bookmark,
   Bot,
-  ClipboardCheck,
   FileText,
   Globe,
-  LayoutDashboard,
   Link2,
+  LayoutDashboard,
   Map,
   MessageSquare,
+  Microscope,
+  Plug,
   Search,
+  Send,
   Sparkles,
   TrendingUp,
 } from "lucide-react";
 import { linkOptions } from "@tanstack/react-router";
 import { GoogleGlyphMuted } from "@/client/features/gsc/GoogleGlyph";
 
-const projectNavItems = [
+// The sidebar is the pipeline (spec 0028).
+//
+// It used to be a filing cabinet: fourteen flat items mixing OpenSEO's
+// point-at-anything research tools with rankloop's operating loop, in no
+// particular order. A new user could not tell where to start because there
+// was no start. These six are the journey, in the order it happens, and the
+// research tools live in a Toolbox below them — reachable, never in the way.
+const journeyNavItems = [
   {
     to: "/p/$projectId" as const,
-    label: "Dashboard",
+    label: "Today",
     icon: LayoutDashboard,
     // Without exact matching, the index path is a prefix of every project
-    // route and the Dashboard item would render active everywhere.
+    // route and this item would render active everywhere.
     activeOptions: { exact: true, includeSearch: false },
+  },
+  {
+    to: "/p/$projectId/study" as const,
+    label: "Study",
+    icon: Microscope,
   },
   {
     to: "/p/$projectId/plan" as const,
@@ -32,33 +45,28 @@ const projectNavItems = [
   },
   {
     to: "/p/$projectId/articles" as const,
-    label: "Articles",
+    label: "Publish",
     icon: FileText,
   },
   {
-    to: "/p/$projectId/receipts" as const,
-    label: "Receipts",
-    icon: BarChart3,
+    to: "/p/$projectId/grow" as const,
+    label: "Grow",
+    icon: Send,
   },
+  {
+    to: "/p/$projectId/connect" as const,
+    label: "Connect",
+    icon: Plug,
+  },
+] as const;
+
+// Point-at-anything lookup tools. Every one of these still works and still
+// has its URL — they are simply not on the path a new project walks.
+const toolboxNavItems = [
   {
     to: "/p/$projectId/keywords" as const,
     label: "Keyword Research",
     icon: Search,
-  },
-  {
-    to: "/p/$projectId/saved" as const,
-    label: "Saved Keywords",
-    icon: Bookmark,
-  },
-  {
-    to: "/p/$projectId/rank-tracking" as const,
-    label: "Rank Tracking",
-    icon: TrendingUp,
-  },
-  {
-    to: "/p/$projectId/search-performance" as const,
-    label: "GSC Insights",
-    icon: GoogleGlyphMuted,
   },
   {
     to: "/p/$projectId/domain" as const,
@@ -71,9 +79,24 @@ const projectNavItems = [
     icon: Link2,
   },
   {
+    to: "/p/$projectId/rank-tracking" as const,
+    label: "Rank Tracking",
+    icon: TrendingUp,
+  },
+  {
+    to: "/p/$projectId/search-performance" as const,
+    label: "GSC Insights",
+    icon: GoogleGlyphMuted,
+  },
+  {
+    to: "/p/$projectId/receipts" as const,
+    label: "Receipts",
+    icon: Sparkles,
+  },
+  {
     to: "/p/$projectId/audit" as const,
     label: "Site Audit",
-    icon: ClipboardCheck,
+    icon: Bookmark,
   },
   {
     to: "/p/$projectId/ai-access" as const,
@@ -90,6 +113,11 @@ const projectNavItems = [
     label: "Prompt Explorer",
     icon: MessageSquare,
   },
+  {
+    to: "/p/$projectId/saved" as const,
+    label: "Saved Keywords",
+    icon: Bookmark,
+  },
 ] as const;
 
 const aiNavItem = linkOptions({
@@ -101,12 +129,16 @@ const aiNavItem = linkOptions({
 // Always-visible sidebar group (not project-scoped, unlike the groups below).
 export const connectNavGroup = {
   label: "Connect",
+  collapsible: false,
   items: [aiNavItem],
 };
 
-function getProjectNavItems(projectId: string) {
+// Two concrete builders rather than one generic helper: `linkOptions` infers
+// from the literal `to` values, and a generic parameter widens them to
+// `string`, at which point every route becomes unassignable.
+function journeyItems(projectId: string) {
   return linkOptions(
-    projectNavItems.map((item) => ({
+    journeyNavItems.map((item) => ({
       ...item,
       params: { projectId },
       search: {},
@@ -114,47 +146,26 @@ function getProjectNavItems(projectId: string) {
   );
 }
 
-// Grouped by scope: "My Site" is the project's own domain (tracked data),
-// "Research" is point-at-anything lookup tools, "Write" runs from decision to
-// evidence — Plan is what to build and who you're up against, then the action
-// queue rankloop proposes and a human approves.
-export function getProjectNavGroups(projectId: string) {
-  const all = getProjectNavItems(projectId);
-  const byPath = (path: (typeof projectNavItems)[number]["to"]) =>
-    all.find((i) => i.to === path)!;
+function toolboxItems(projectId: string) {
+  return linkOptions(
+    toolboxNavItems.map((item) => ({
+      ...item,
+      params: { projectId },
+      search: {},
+    })),
+  );
+}
 
+export function getProjectNavGroups(projectId: string) {
   return [
+    { label: null, collapsible: false, items: journeyItems(projectId) },
     {
-      label: "Overview",
-      items: [byPath("/p/$projectId")],
-    },
-    {
-      label: "Write",
-      items: [
-        byPath("/p/$projectId/plan"),
-        byPath("/p/$projectId/articles"),
-        byPath("/p/$projectId/receipts"),
-      ],
-    },
-    {
-      label: "Research",
-      items: [
-        byPath("/p/$projectId/keywords"),
-        byPath("/p/$projectId/domain"),
-        byPath("/p/$projectId/backlinks"),
-        byPath("/p/$projectId/brand-lookup"),
-        byPath("/p/$projectId/prompt-explorer"),
-      ],
-    },
-    {
-      label: "My Site",
-      items: [
-        byPath("/p/$projectId/search-performance"),
-        byPath("/p/$projectId/rank-tracking"),
-        byPath("/p/$projectId/saved"),
-        byPath("/p/$projectId/audit"),
-        byPath("/p/$projectId/ai-access"),
-      ],
+      label: "Toolbox",
+      // Collapsed by default: these are the tools you reach for when you
+      // already know what you are looking for, and a new project never
+      // does.
+      collapsible: true,
+      items: toolboxItems(projectId),
     },
   ];
 }

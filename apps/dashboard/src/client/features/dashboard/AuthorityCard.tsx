@@ -17,10 +17,14 @@ import { getSeoApiKeyStatus } from "@/serverFunctions/config";
 // after this card costs zero extra fetches.
 const AUTHORITY_QUERY_STALE_TIME_MS = 5 * 60 * 1000;
 
-// Off-site authority for the project domain, straight from the backlinks
-// feature's overview endpoint. The Backlink pulse card tracks the stored
-// snapshot's deltas over time; this card is the live DataForSEO picture,
-// including domain rank.
+// Off-site reach for the project domain, straight from the backlinks
+// feature's overview endpoint.
+//
+// This used to be one of two cards: "Backlink pulse" read a stored snapshot
+// and this one read live DataForSEO. The distinction was real in the code
+// and invisible on screen — both led with the same two numbers, 107
+// backlinks and 41 referring domains, and both linked to the same page. This
+// is the survivor because it is the superset: it alone carries domain rank.
 export function AuthorityCard({
   projectId,
   domain,
@@ -54,7 +58,7 @@ export function AuthorityCard({
   // that may work fine on retry.
   if (keyConfigured === false || keyStatusQuery.isError) {
     return (
-      <CardShell title="Authority">
+      <CardShell title="Reach">
         <EmptyCardBody
           message="Add your DataForSEO API key to see who links to your domain and how much weight those links carry."
           cta={
@@ -72,7 +76,7 @@ export function AuthorityCard({
 
   return (
     <CardShell
-      title="Authority"
+      title="Reach"
       stamp={
         overview
           ? `DataForSEO · snapshot ${formatDay(overview.fetchedAt)}`
@@ -118,7 +122,7 @@ export function AuthorityCard({
             }
           />
           <Stat
-            label="Domain rank"
+            label="Domain Rank (DataForSEO)"
             value={
               overview.summary.rank === null
                 ? "—"
