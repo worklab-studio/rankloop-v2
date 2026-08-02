@@ -52,6 +52,7 @@ vi.mock("@/server/lib/openrouter", () => ({
   buildChatAgentModel: (_key: string, modelId?: string) => ({
     modelId: modelId ?? "house/default",
   }),
+  getZdrPreference: vi.fn(async () => true),
 }));
 vi.mock("@/server/lib/runtime-env", () => ({
   getOptionalEnvValue: (name: string) => Promise.resolve(mocks.env.get(name)),

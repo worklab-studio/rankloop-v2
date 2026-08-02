@@ -225,7 +225,7 @@ category: Guides
 keyword: espresso grind size
 ---
 
-I measured every shot on my home machine for a week before I trusted any of
+I would check every shot on my own machine for a week before trusting any of
 this. Let's explore the dose first, because espresso grind size moves further
 than the collar numbers suggest.
 

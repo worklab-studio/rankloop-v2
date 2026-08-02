@@ -108,7 +108,7 @@ category: Comparisons
 keyword: espresso tamper sizes
 ---
 
-I measured every basket in the drawer before I trusted any of this. The numbers
+I would measure every basket in the drawer before trusting any of this. The numbers
 below are the ones I wrote down, not the ones a manufacturer prints on a box.
 
 ## Measure the basket, not the box

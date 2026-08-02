@@ -141,6 +141,7 @@ vi.mock("@/server/lib/openrouter", () => ({
   buildChatAgentModel: (_key: string, modelId?: string) => ({
     modelId: modelId ?? "house/default",
   }),
+  getZdrPreference: vi.fn(async () => true),
 }));
 
 const { runProjectRoutines } =

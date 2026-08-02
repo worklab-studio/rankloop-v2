@@ -119,7 +119,36 @@ export function coreLaws(cfg: EngineConfig, validSlugs: Set<string>): Law[] {
       (p) => /\b(I |I've|my |we |our |in my testing|I measured|I found|I built)/.test(articleText(cfg, p)),
     ]);
   }
+  if (L.banExperienceClaims) {
+    laws.push([
+      "no claimed experience",
+      (p) => experienceClaims(articleText(cfg, p)).length === 0,
+    ]);
+  }
   return laws;
+}
+
+/**
+ * Sentences where the author claims to have done something.
+ *
+ * The hard part is that this law and `requireFirstPerson` want opposite
+ * things from the same pronoun, so the patterns match a first-person verb of
+ * DOING or WITNESSING and nothing else. "I find", "I would start with", "my
+ * setup", "I recommend" are voice and stay legal; "I tested", "I have seen",
+ * "in my testing" are evidence, and a machine that writes them is inventing a
+ * credential.
+ *
+ * Kept narrow on purpose. A false positive here sends a good draft back into
+ * the repair loop and costs a generation, so the list is verbs a writer
+ * cannot honestly use without having been there.
+ */
+export function experienceClaims(text: string): string[] {
+  const rx =
+    // The subject may carry a contraction ("I've"), an auxiliary ("I have"),
+    // or neither ("I tested") — hence the optional group before the verb
+    // rather than a required space after the pronoun.
+    /\b(?:I|we)(?:'ve|\s+have|\s+had)?\s+(?:tested|tried|used|ran|run|opened|installed|measured|benchmarked|timed|weighed|monitored|observed|witnessed|seen|watched)\b|\bin\s+(?:my|our)\s+(?:testing|tests|experience|trials|lab|kitchen|setup)\b|\b(?:my|our)\s+(?:testing|tests|benchmarks|measurements)\s+(?:showed|found|revealed)\b|\bwhen\s+(?:I|we)\s+(?:tested|tried|ran|measured)\b/gi;
+  return [...text.matchAll(rx)].map((m) => m[0]);
 }
 
 /** Validate a corpus against the laws. Returns every violation; an empty

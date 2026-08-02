@@ -43,6 +43,21 @@ export interface LawsConfig {
   keywordDensityMax: number;
   banEmDash: boolean;
   requireFirstPerson: boolean;
+  /**
+   * Fail a post that claims first-hand experience ("I tested", "I have
+   * seen", "in my testing").
+   *
+   * OFF by default, and the default is the whole point: for a human author
+   * those sentences are the best thing in the piece, and `requireFirstPerson`
+   * exists to encourage exactly them. For a MACHINE author the same sentence
+   * is a fabrication wearing a human voice, and no other law can catch it —
+   * the rest of this table counts words, headings and links.
+   *
+   * So the caller who knows who is writing sets it: the app's writer gate
+   * turns it on for generated drafts, `rankloop check` over a human's own
+   * corpus leaves it off.
+   */
+  banExperienceClaims?: boolean;
   bannedPhrases: string[];
 }
 

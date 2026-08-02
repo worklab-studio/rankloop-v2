@@ -57,6 +57,7 @@ vi.mock("@/server/lib/openrouter", () => ({
   buildChatAgentModel: (_key: string, modelId?: string) => ({
     modelId: modelId ?? "house/default",
   }),
+  getZdrPreference: vi.fn(async () => true),
 }));
 vi.mock("@/server/lib/runtime-env", () => ({
   getOptionalEnvValue: (name: string) => Promise.resolve(mocks.env.get(name)),
@@ -228,7 +229,7 @@ category: Guides
 keyword: espresso grind size
 ---
 
-I measured every shot on my home machine for a week before I trusted any of
+I would check every shot on my own machine for a week before trusting any of
 this. The numbers below are the ones I wrote down, not the ones a manufacturer
 prints on a box.
 

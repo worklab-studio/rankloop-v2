@@ -22,6 +22,7 @@ import {
   coreLaws,
   fillerHits,
   frontmatter,
+  experienceClaims,
   internalSlugs,
   parseMdPost,
   validate,
@@ -69,6 +70,7 @@ export type LawId =
   | "keywordDensityMax"
   | "bannedPhrases"
   | "firstPerson"
+  | "experienceClaims"
   | "unknown";
 
 /** A quote from the draft showing why a law failed. */
@@ -158,6 +160,7 @@ const LAW_SPECS: readonly LawSpec[] = [
   { id: "keywordDensityMax", prefix: "keyword density <= " },
   { id: "bannedPhrases", prefix: "no filler AI phrases" },
   { id: "firstPerson", prefix: "first-person experience" },
+  { id: "experienceClaims", prefix: "no claimed experience" },
 ];
 
 function identify(law: string): LawId {
@@ -294,6 +297,8 @@ function thresholdFor(id: LawId, cfg: EngineConfig, post: Post): string | null {
       return `none of the ${laws.bannedPhrases.length} banned phrases`;
     case "firstPerson":
       return "at least one first-person passage";
+    case "experienceClaims":
+      return "no claimed first-hand experience";
     case "unknown":
       return null;
   }
@@ -341,6 +346,25 @@ function observedFor(id: LawId, post: Post, facts: DraftFacts): string | null {
 
 /** Only the three laws that can point at text. Everything else fails for an
  *  absence, and quoting an absence is how a fix prompt starts inventing. */
+/** The sentence around each invented credential. This law is the one where
+ *  the quote does the whole job: "I have opened enough machines to know" is
+ *  self-evidently wrong once a writer sees it beside the instruction not to
+ *  claim experience, and a law name alone would not land. */
+function experienceExcerpts(body: string): LawExcerpt[] {
+  const seen = new Set<string>();
+  const out: LawExcerpt[] = [];
+  for (const claim of experienceClaims(body)) {
+    const at = body.indexOf(claim);
+    if (at === -1) continue;
+    const quote = sentenceAround(body, at);
+    if (seen.has(quote)) continue;
+    seen.add(quote);
+    out.push({ quote, label: claim.trim() });
+    if (out.length >= MAX_EXCERPTS_PER_LAW) break;
+  }
+  return out;
+}
+
 function excerptsFor(
   id: LawId,
   cfg: EngineConfig,
@@ -354,6 +378,8 @@ function excerptsFor(
       return bannedPhraseExcerpts(facts.body, facts.bannedHits);
     case "internalLinksMin":
       return deadLinkExcerpts(cfg.site.blogPath, facts.deadLinkSlugs);
+    case "experienceClaims":
+      return experienceExcerpts(facts.body);
     default:
       return [];
   }
@@ -379,7 +405,18 @@ function buildConfig(input: GateInput, blogRoot: string): EngineConfig {
     // Empty for the same reason the brief leaves them empty: the relevance
     // gate ran back in S5, and no publish law reads these patterns.
     keywords: { positive: [], negative: [], classify: [] },
-    laws: mergeContractLaws(input.contract),
+    laws: {
+      ...mergeContractLaws(input.contract),
+      // The author here is a model, always. The engine leaves this law off by
+      // default because a human writing about their own site may genuinely
+      // have tested the thing, and requireFirstPerson wants them to say so.
+      // A machine writing "I have opened enough machines to know" is inventing
+      // a credential, and no other law in the table can see it — they count
+      // words, headings and links, and a fabricated sentence counts perfectly.
+      // Observed on the first live generation (2026-08-01): 14 laws passed and
+      // the draft still claimed two first-hand experiences.
+      banExperienceClaims: true,
+    },
   };
 }
 

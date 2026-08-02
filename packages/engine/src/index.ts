@@ -17,7 +17,9 @@ export { relevant, classify, score } from "./score.ts";
 export { computeQuota, type QuotaConfig } from "./quota.ts";
 export { applyPoolMix, type Slot } from "./pick.ts";
 export { parseHtmlPost, parseMdPost, manifest, type CorpusEntry } from "./parse.ts";
-export { articleText, fillerHits, internalSlugs, coreLaws, validate } from "./laws.ts";
+export {
+  articleText, fillerHits, internalSlugs, experienceClaims, coreLaws, validate,
+} from "./laws.ts";
 export {
   linkCandidates, serpSection, renderBrief, resolveCategory, type BriefInput,
 } from "./brief.ts";

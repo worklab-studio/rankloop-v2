@@ -103,6 +103,12 @@ const FIX_BY_LAW: Readonly<Record<LawId, string>> = {
     "Nothing in the piece is written in first person. Say what you did, " +
     "built, checked or would check, in your own voice. Do not invent a test " +
     "you did not run.",
+  experienceClaims:
+    "These sentences claim you did or saw something. You did not: you are " +
+    "writing from the brief. Keep the first-person voice and drop the " +
+    "credential. \"I have opened enough machines to know X\" becomes \"X\", " +
+    "or \"most machines show X\" if the brief supports it. Do not swap one " +
+    "invented experience for a vaguer one.",
   unknown:
     "This build has no guidance for this law. Its name states the " +
     "requirement; satisfy it without changing anything else.",

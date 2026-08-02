@@ -72,7 +72,7 @@ function compliantDraft(): string {
     "",
     `I weigh every dose, and burr grinder retention is what the scale keeps finding. ${paragraphs(12)}`,
     "",
-    "## How I measured it",
+    "## How I would measure it",
     "",
     paragraphs(12),
     "",
