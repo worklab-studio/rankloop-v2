@@ -1,0 +1,496 @@
+{
+  "$comment": "Curated submission targets (spec 0029). DATA, never code \u2014 hard rule 2 keeps product and vendor names out of .ts source. Every entry was fetched on 2026-08-02; nothing is listed that did not answer. Entries with urlConfirmed=false answered 403/429, which means the host is live and refusing bots, not that it is gone.",
+  "checkedAt": "2026-08-02",
+  "targets": [
+    {
+      "domain": "alternativeto.net",
+      "name": "AlternativeTo",
+      "kind": "directory",
+      "submissionUrl": "https://alternativeto.net/manage/software/new/",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "betalist.com",
+      "name": "BetaList",
+      "kind": "launch",
+      "submissionUrl": "https://betalist.com/submit",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "capterra.com",
+      "name": "Capterra",
+      "kind": "review",
+      "submissionUrl": "https://www.capterra.com/vendors/sign-up",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "crunchbase.com",
+      "name": "Crunchbase",
+      "kind": "directory",
+      "submissionUrl": "https://www.crunchbase.com/register",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "dang.ai",
+      "name": "Dang.ai",
+      "kind": "directory",
+      "submissionUrl": "https://dang.ai",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "devhunt.org",
+      "name": "DevHunt",
+      "kind": "launch",
+      "submissionUrl": "https://devhunt.org",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "f6s.com",
+      "name": "F6S",
+      "kind": "directory",
+      "submissionUrl": "https://www.f6s.com",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "fazier.com",
+      "name": "Fazier",
+      "kind": "launch",
+      "submissionUrl": "https://fazier.com",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "findmysaas.com",
+      "name": "Find My SaaS",
+      "kind": "directory",
+      "submissionUrl": "https://findmysaas.com",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "futurepedia.io",
+      "name": "Futurepedia",
+      "kind": "directory",
+      "submissionUrl": "https://www.futurepedia.io/submit-tool",
+      "pricing": "paid",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "g2.com",
+      "name": "G2",
+      "kind": "review",
+      "submissionUrl": "https://www.g2.com/products/new",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "getapp.com",
+      "name": "GetApp",
+      "kind": "review",
+      "submissionUrl": "https://www.getapp.com",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "indiehackers.com",
+      "name": "Indie Hackers",
+      "kind": "community",
+      "submissionUrl": "https://www.indiehackers.com/products",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "launchingnext.com",
+      "name": "Launching Next",
+      "kind": "launch",
+      "submissionUrl": "https://www.launchingnext.com/submit/",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "microlaunch.net",
+      "name": "MicroLaunch",
+      "kind": "launch",
+      "submissionUrl": "https://microlaunch.net",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "news.ycombinator.com",
+      "name": "Show HN",
+      "kind": "community",
+      "submissionUrl": "https://news.ycombinator.com/showhn.html",
+      "pricing": "free",
+      "mode": "post",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "opentools.ai",
+      "name": "OpenTools",
+      "kind": "directory",
+      "submissionUrl": "https://opentools.ai",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "peerlist.io",
+      "name": "Peerlist",
+      "kind": "community",
+      "submissionUrl": "https://peerlist.io",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "producthunt.com",
+      "name": "Product Hunt",
+      "kind": "launch",
+      "submissionUrl": "https://www.producthunt.com/posts/new",
+      "pricing": "free",
+      "mode": "editorial",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "saasgenius.com",
+      "name": "SaaS Genius",
+      "kind": "review",
+      "submissionUrl": "https://www.saasgenius.com",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "saashub.com",
+      "name": "SaaSHub",
+      "kind": "directory",
+      "submissionUrl": "https://www.saashub.com/submit",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "saasworthy.com",
+      "name": "SaaSWorthy",
+      "kind": "directory",
+      "submissionUrl": "https://www.saasworthy.com",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "sideprojectors.com",
+      "name": "SideProjectors",
+      "kind": "directory",
+      "submissionUrl": "https://www.sideprojectors.com",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "slant.co",
+      "name": "Slant",
+      "kind": "listicle",
+      "submissionUrl": "https://www.slant.co",
+      "pricing": "free",
+      "mode": "community",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "softwareadvice.com",
+      "name": "Software Advice",
+      "kind": "review",
+      "submissionUrl": "https://www.softwareadvice.com",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "sourceforge.net",
+      "name": "SourceForge",
+      "kind": "directory",
+      "submissionUrl": "https://sourceforge.net/create/",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "stackshare.io",
+      "name": "StackShare",
+      "kind": "directory",
+      "submissionUrl": "https://stackshare.io/tools/new",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 429,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "startupstash.com",
+      "name": "Startup Stash",
+      "kind": "directory",
+      "submissionUrl": "https://startupstash.com/add-listing/",
+      "pricing": "paid",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "theresanaiforthat.com",
+      "name": "There's An AI For That",
+      "kind": "directory",
+      "submissionUrl": "https://theresanaiforthat.com/submit/",
+      "pricing": "paid",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "tinylaunch.com",
+      "name": "TinyLaunch",
+      "kind": "launch",
+      "submissionUrl": "https://www.tinylaunch.com",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "toolify.ai",
+      "name": "Toolify",
+      "kind": "directory",
+      "submissionUrl": "https://www.toolify.ai/submit",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "trustradius.com",
+      "name": "TrustRadius",
+      "kind": "review",
+      "submissionUrl": "https://www.trustradius.com",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 403,
+        "urlConfirmed": false,
+        "note": "host live; blocks automated requests, path unconfirmed"
+      }
+    },
+    {
+      "domain": "uneed.best",
+      "name": "Uneed",
+      "kind": "launch",
+      "submissionUrl": "https://www.uneed.best/submit-a-tool",
+      "pricing": "freemium",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    },
+    {
+      "domain": "wellfound.com",
+      "name": "Wellfound",
+      "kind": "directory",
+      "submissionUrl": "https://wellfound.com",
+      "pricing": "free",
+      "mode": "form",
+      "audience": "software",
+      "check": {
+        "at": "2026-08-02",
+        "status": 200,
+        "urlConfirmed": true
+      }
+    }
+  ]
+}
