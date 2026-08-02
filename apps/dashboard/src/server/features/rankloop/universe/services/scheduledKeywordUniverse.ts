@@ -25,7 +25,9 @@ const UNIVERSE_STALE_AFTER_DAYS = 7;
  *  this project has told us where to harvest from. Metered sources are absent
  *  by construction — a schedule that quietly bills someone weekly is how a
  *  tool loses the trust its cost sentences are trying to earn. */
-function scheduledSourcesFor(harvest: HarvestConfig | null): UniverseSource[] {
+export function scheduledSourcesFor(
+  harvest: HarvestConfig | null,
+): UniverseSource[] {
   return FREE_UNIVERSE_SOURCES.filter(
     (source) => source !== "harvest" || hasHarvestSources(harvest),
   );

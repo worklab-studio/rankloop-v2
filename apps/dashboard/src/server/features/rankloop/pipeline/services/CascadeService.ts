@@ -11,10 +11,12 @@ import {
 } from "@/server/features/rankloop/pipeline/pipeline.logic";
 import { PipelineService } from "@/server/features/rankloop/pipeline/services/PipelineService";
 import { SiteStudyService } from "@/server/features/rankloop/site-study/services/SiteStudyService";
+import { UniverseRunsRepository } from "@/server/features/rankloop/universe/repositories/UniverseRunsRepository";
+import { scheduledSourcesFor } from "@/server/features/rankloop/universe/services/scheduledKeywordUniverse";
 import { UniverseRunService } from "@/server/features/rankloop/universe/services/UniverseRunService";
 import { AiAccessService } from "@/server/features/rankloop/verdict/services/AiAccessService";
 import { NetNewProposalsService } from "@/server/features/rankloop/writing/services/NetNewProposalsService";
-import { FREE_UNIVERSE_SOURCES } from "@/types/schemas/rankloopUniverse";
+import { parseUniverseRunSources } from "@/types/schemas/rankloopUniverse";
 
 // The Day-0 cascade (spec 0028).
 //
@@ -110,11 +112,23 @@ const STARTERS: Record<
   },
 
   keywords: async (ctx) => {
-    // FREE sources only. `gap` and `expansion` bill per call and stay
-    // manual-only — the dispatcher refuses them and so does this.
+    // FREE sources only — `gap` and `expansion` bill per call and stay
+    // manual-only — and `harvest` only when this project has said where to
+    // harvest from. Asking for an unconfigured harvest rejects the WHOLE
+    // run, which is how the first cascade sat at "Nothing gathered yet"
+    // while autocomplete and GSC were both perfectly runnable.
+    //
+    // Same function the weekly schedule uses, not a copy of its rule: two
+    // implementations of "what may auto-run" is one too many.
+    const lastHarvestRun =
+      await UniverseRunsRepository.getLatestHarvestRunForProject(ctx.projectId);
+    const harvest =
+      parseUniverseRunSources(lastHarvestRun?.sourcesJson ?? null)?.harvest ??
+      null;
+
     await UniverseRunService.startRun({
       projectId: ctx.projectId,
-      sources: [...FREE_UNIVERSE_SOURCES],
+      sources: scheduledSourcesFor(harvest),
     });
   },
 

@@ -79,6 +79,7 @@ async function gatherFacts(projectId: string): Promise<PipelineFacts> {
   ]);
 
   const tracked = competitors?.tracked ?? [];
+  const suggested = competitors?.suggested ?? [];
   // Titles the user has yet to answer versus ones they have. `approved` is
   // what releases the publish stage, so a pile of proposals is not progress.
   const proposedTitles = proposals.filter((p) => p.status === "proposed").length;
@@ -104,6 +105,7 @@ async function gatherFacts(projectId: string): Promise<PipelineFacts> {
       dayCount: memory?.dayCount ?? 0,
     },
     competitors: {
+      suggested: suggested.length,
       tracked: tracked.length,
       studied: tracked.filter((row) => row.lastStudiedAt !== null).length,
       running: tracked.some(

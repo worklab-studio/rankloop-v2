@@ -75,6 +75,10 @@ export interface PipelineFacts {
     dayCount: number;
   };
   competitors: {
+    /** Discovery produces SUGGESTED rows; a human promotes them to tracked,
+     *  and only tracked ones get studied. Counting tracked alone made a
+     *  successful discovery of 19 domains read as "no competitors found". */
+    suggested: number;
     tracked: number;
     studied: number;
     running: boolean;
@@ -239,6 +243,18 @@ function readMarket(f: PipelineFacts): Reading {
       detail: c.anyError ? `${detail} · a study failed` : detail,
     };
   }
+  // Discovery found domains and nobody has said which are really competitors.
+  // rankloop will not decide this for you: studying a domain costs money, and
+  // an auto-tracked list of twenty is both a bill and a plan built on
+  // whichever sites happened to rank.
+  if (c.suggested > 0) {
+    return {
+      status: "needs_you",
+      detail: `${plural(c.suggested, "domain")} found — pick which ones are really your competitors`,
+      blockedBy: "Competitors not chosen",
+      action: { label: "Pick competitors", to: "/p/$projectId/study" },
+    };
+  }
   return { status: "idle", detail: "No competitors found yet" };
 }
 
@@ -258,6 +274,23 @@ function readKeywords(f: PipelineFacts): Reading {
   }
   if (k.status === "error") {
     return { status: "error", detail: "The last run failed" };
+  }
+  // A run that finished and found nothing is NOT idle. Calling it idle makes
+  // it startable again, and the cascade restarts it on every poll forever —
+  // and it is not honest either, since the sources did run.
+  //
+  // The free sources are Search Console's unserved queries and autocomplete
+  // seeded from what you already rank for. On a one-page site with no GSC
+  // there is nothing for either to work from, so this is a real blocker with
+  // a real fix rather than a step still pending.
+  if (k.status === "done") {
+    return {
+      status: "needs_you",
+      detail:
+        "The free sources came back empty — they need Search Console or tracked competitors to work from",
+      blockedBy: "No keywords yet",
+      action: { label: "See what's missing", to: "/p/$projectId/connect" },
+    };
   }
   return { status: "idle", detail: "Nothing gathered yet" };
 }

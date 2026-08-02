@@ -17,7 +17,7 @@ function fresh(): PipelineFacts {
     siteStudy: { status: null, pages: 0, posts: 0, crawled: 0, total: 0 },
     aiAccess: { checked: false, blockedAgents: 0, findings: 0 },
     gsc: { oauthConfigured: true, connected: false, status: null, dayCount: 0 },
-    competitors: { tracked: 0, studied: 0, running: false, anyError: false },
+    competitors: { suggested: 0, tracked: 0, studied: 0, running: false, anyError: false },
     keywords: { status: null, backlog: 0 },
     plan: { status: null, proposed: 0, approved: 0 },
     titles: { proposed: 0, approved: 0 },
@@ -84,7 +84,7 @@ describe("Search Console is a prompt, not a gate", () => {
     // The requirement in one test: a project with no GSC still studies its
     // site, finds competitors, builds a universe and drafts a plan.
     const f = studied({
-      competitors: { tracked: 5, studied: 5, running: false, anyError: false },
+      competitors: { suggested: 0, tracked: 5, studied: 5, running: false, anyError: false },
       keywords: { status: "done", backlog: 1218 },
       gsc: { oauthConfigured: true, connected: false, status: null, dayCount: 0 },
     });
@@ -167,16 +167,63 @@ describe("Gate 1 — proposed is not approved", () => {
 describe("readings that would otherwise mislead", () => {
   it("reports a competitor study failure without hiding the ones that worked", () => {
     const f = studied({
-      competitors: { tracked: 3, studied: 2, running: false, anyError: true },
+      competitors: { suggested: 0, tracked: 3, studied: 2, running: false, anyError: true },
     });
     const market = buildPipeline(f).stages.find((s) => s.id === "market");
     expect(market?.status).toBe("done");
     expect(market?.detail).toBe("3 competitors, 2 studied · a study failed");
   });
 
+  it("does not call a successful discovery 'no competitors found'", () => {
+    // The live cascade found 19 domains for productlaunchos.com and the
+    // spine said "No competitors found yet", because discovery produces
+    // SUGGESTED rows and this counted only tracked ones. It reads as a
+    // failed step when in fact it is a decision waiting.
+    const f = studied({
+      competitors: { suggested: 19, tracked: 0, studied: 0, running: false, anyError: false },
+    });
+    const market = buildPipeline(f).stages.find((s) => s.id === "market");
+    expect(market?.status).toBe("needs_you");
+    expect(market?.detail).toContain("19 domains found");
+  });
+
+  it("will not auto-track discovered domains", () => {
+    // Studying a domain costs money, and twenty auto-tracked competitors is
+    // both a bill and a plan built on whichever sites happened to rank.
+    const f = studied({
+      competitors: { suggested: 19, tracked: 0, studied: 0, running: false, anyError: false },
+    });
+    expect(startableStages(buildPipeline(f).stages)).not.toContain("market");
+  });
+
+  it("does not restart a keyword run that finished empty", () => {
+    // The live cascade hit this: the free sources ran, found nothing on a
+    // one-page site with no Search Console, and the stage fell through to
+    // `idle` — which made it startable again, so the cascade relaunched it
+    // on every poll. A finished run is finished whatever it returned.
+    const f = studied({ keywords: { status: "done", backlog: 0 } });
+    expect(statusOf(f, "keywords")).not.toBe("idle");
+    expect(startableStages(buildPipeline(f).stages)).not.toContain("keywords");
+  });
+
+  it("explains an empty keyword run instead of calling it pending", () => {
+    const f = studied({ keywords: { status: "done", backlog: 0 } });
+    const keywords = buildPipeline(f).stages.find((s) => s.id === "keywords");
+    expect(keywords?.status).toBe("needs_you");
+    expect(keywords?.detail).toContain("came back empty");
+  });
+
+  it("keeps the page plan from running against an empty backlog", () => {
+    // A page plan samples SERPs, which costs money. Building one from zero
+    // keywords spends it to learn nothing.
+    const f = studied({ keywords: { status: "done", backlog: 0 } });
+    expect(statusOf(f, "plan")).toBe("waiting");
+    expect(startableStages(buildPipeline(f).stages)).not.toContain("plan");
+  });
+
   it("calls it an error only when nothing survived", () => {
     const f = studied({
-      competitors: { tracked: 3, studied: 0, running: false, anyError: true },
+      competitors: { suggested: 0, tracked: 3, studied: 0, running: false, anyError: true },
     });
     expect(statusOf(f, "market")).toBe("error");
   });
@@ -239,7 +286,7 @@ describe("the cascade converges", () => {
   it("reports settled once nothing is startable and nothing is running", () => {
     const f = studied({
       aiAccess: { checked: true, blockedAgents: 0, findings: 1 },
-      competitors: { tracked: 4, studied: 4, running: false, anyError: false },
+      competitors: { suggested: 0, tracked: 4, studied: 4, running: false, anyError: false },
       keywords: { status: "done", backlog: 800 },
       plan: { status: "done", proposed: 4, approved: 2 },
       titles: { proposed: 0, approved: 20 },
@@ -264,7 +311,7 @@ describe("pipelineHeadline()", () => {
     const f = studied({
       aiAccess: { checked: true, blockedAgents: 0, findings: 0 },
       gsc: { oauthConfigured: true, connected: true, status: "done", dayCount: 90 },
-      competitors: { tracked: 4, studied: 4, running: false, anyError: false },
+      competitors: { suggested: 0, tracked: 4, studied: 4, running: false, anyError: false },
       keywords: { status: "done", backlog: 800 },
       plan: { status: "done", proposed: 4, approved: 2 },
       titles: { proposed: 0, approved: 20 },
@@ -282,7 +329,7 @@ describe("pipelineHeadline()", () => {
     const f = studied({
       aiAccess: { checked: true, blockedAgents: 0, findings: 0 },
       gsc: { oauthConfigured: true, connected: true, status: "done", dayCount: 90 },
-      competitors: { tracked: 4, studied: 4, running: false, anyError: false },
+      competitors: { suggested: 0, tracked: 4, studied: 4, running: false, anyError: false },
       keywords: { status: "done", backlog: 800 },
       plan: { status: "done", proposed: 4, approved: 2 },
       titles: { proposed: 0, approved: 20 },
@@ -302,7 +349,7 @@ function completeStage(f: PipelineFacts, id: string): PipelineFacts {
     case "access":
       return { ...f, aiAccess: { checked: true, blockedAgents: 0, findings: 1 } };
     case "market":
-      return { ...f, competitors: { tracked: 5, studied: 5, running: false, anyError: false } };
+      return { ...f, competitors: { suggested: 0, tracked: 5, studied: 5, running: false, anyError: false } };
     case "keywords":
       return { ...f, keywords: { status: "done", backlog: 1218 } };
     case "plan":

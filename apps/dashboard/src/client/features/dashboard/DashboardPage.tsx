@@ -11,15 +11,13 @@ import {
 } from "@/client/features/dashboard/dashboardSteps";
 import {
   AuditHealthCard,
-  BacklinkPulseCard,
   GscCard,
 } from "@/client/features/dashboard/DashboardCards";
-import { AuthorityCard } from "@/client/features/dashboard/AuthorityCard";
 import { ContentInventoryCard } from "@/client/features/dashboard/ContentInventoryCard";
 import { DigestCard } from "@/client/features/dashboard/DigestCard";
 import { IndexationCard } from "@/client/features/dashboard/IndexationCard";
-import { McpConnectCard } from "@/client/features/dashboard/McpConnectCard";
-import { RankloopProgressSpine } from "@/client/features/dashboard/RankloopProgressSpine";
+import { RankloopNeedsYou } from "@/client/features/rankloop-pipeline/RankloopNeedsYou";
+import { RankloopSpine } from "@/client/features/rankloop-pipeline/RankloopSpine";
 import { useSiteStudyPolling } from "@/client/features/dashboard/useSiteStudyPolling";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import type { DashboardActivation } from "@/server/features/dashboard/services/DashboardService";
@@ -29,7 +27,6 @@ import {
   markDashboardCompetitorClicked,
   refreshDashboardBacklinkSnapshot,
 } from "@/serverFunctions/dashboard";
-import { getSeoApiKeyStatus } from "@/serverFunctions/config";
 import { setProjectDomain } from "@/serverFunctions/projects";
 import type { DashboardHeroStep } from "@/types/schemas/dashboard";
 
@@ -250,11 +247,6 @@ export function DashboardPage({ projectId }: { projectId: string }) {
   });
   const study = useSiteStudyPolling(projectId);
   // Deduped with the app shell's identical query — this only feeds the
-  // data-first sort, so the Authority card lands in the right bucket.
-  const seoKeyQuery = useQuery({
-    queryKey: ["seoApiKeyStatus"],
-    queryFn: () => getSeoApiKeyStatus(),
-  });
 
   const activation = activationQuery.data;
   const overview = overviewQuery.data;
@@ -313,20 +305,21 @@ export function DashboardPage({ projectId }: { projectId: string }) {
     );
   }
 
-  // Hoisted so the `showBacklinks` aliased condition narrows it to string —
-  // TS only tracks aliased narrowing for consts, not mutable property reads.
-  const domain = activation.domain;
-  const showBacklinks = domain !== null;
   const gscConnected = activation.gsc.connected;
 
   return (
     <div className="px-4 py-4 pb-24 md:px-6 md:py-6 md:pb-8">
       <div className="mx-auto flex max-w-5xl flex-col gap-5">
-        <h1 className="text-2xl font-semibold">Dashboard</h1>
+        <h1 className="text-2xl font-semibold">Today</h1>
 
         <OnboardingChecklist projectId={projectId} activation={activation} />
 
-        <RankloopProgressSpine projectId={projectId} study={study} />
+        {/* Decisions first, then state. The queue is populated only by
+          stages that genuinely need a human, so it is usually two rows or
+          absent entirely — everything else rankloop is getting to. */}
+        <RankloopNeedsYou projectId={projectId} />
+
+        <RankloopSpine projectId={projectId} />
 
         {/* Full width, and above the grid: the digest is the one card someone
           is meant to read top to bottom every morning, and its rows are
@@ -338,22 +331,11 @@ export function DashboardPage({ projectId }: { projectId: string }) {
           data render before setup pitches and empty states. */}
         <div className="grid items-start gap-5 lg:grid-cols-2">
           {[
-            // Array order is the within-bucket order after the data-first sort:
-            // the MCP pitch leads the setup cards.
-            ...(activation.mcp.firstToolCallAt || activation.mcp.cardDismissedAt
-              ? []
-              : [
-                  {
-                    key: "mcp",
-                    hasData: false,
-                    node: (
-                      <McpConnectCard
-                        projectId={projectId}
-                        activation={activation}
-                      />
-                    ),
-                  },
-                ]),
+            // The MCP pitch used to lead this grid, which put "Connect your
+            // AI agent" on screen twice — once as onboarding checklist step
+            // 2/4 and again as its own card, a few hundred pixels apart. The
+            // checklist keeps it; it is a setup step, and the checklist is
+            // where setup steps live.
             {
               key: "gsc",
               hasData: gscConnected,
@@ -385,31 +367,9 @@ export function DashboardPage({ projectId }: { projectId: string }) {
               hasData: gscConnected,
               node: <IndexationCard projectId={projectId} />,
             },
-            ...(showBacklinks
-              ? [
-                  {
-                    key: "backlinks",
-                    hasData:
-                      overview?.backlinks != null || refreshMutation.isPending,
-                    node: (
-                      <BacklinkPulseCard
-                        projectId={projectId}
-                        backlinks={overview?.backlinks ?? null}
-                        refreshing={refreshMutation.isPending}
-                      />
-                    ),
-                  },
-                  {
-                    key: "authority",
-                    // With a key the card will land its numbers (or a quiet
-                    // retry line); without one it's the setup pitch bucket.
-                    hasData: seoKeyQuery.data?.configured === true,
-                    node: (
-                      <AuthorityCard projectId={projectId} domain={domain} />
-                    ),
-                  },
-                ]
-              : []),
+            // Reach (backlinks, referring domains, domain rank) lives on
+            // Study now. It used to appear here twice — as "Backlink pulse"
+            // and again as "Authority" — with the same two numbers in both.
           ]
             .toSorted((a, b) => Number(b.hasData) - Number(a.hasData))
             .map((card) => (
