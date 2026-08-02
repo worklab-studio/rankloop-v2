@@ -220,8 +220,18 @@ per-article PRs, structure editor. (Copy-paste mode ships in Phase 1 —
 it's an export surface on articles that already exist.)
 
 **Phase 4 — Programmatic depth.** The variables × variables builder
-(Byword-Pages equivalent, repo-native), Framer/Webflow adapters, dataset-
-driven pSEO (CSV/API → pages, through the same laws).
+(Byword-Pages equivalent, repo-native), dataset-driven pSEO (CSV/API →
+pages, through the same laws), then CMS adapters.
+
+Adapter order corrected after research on 2026-08-02 (see spec 0031):
+**Webflow first** — its Data API v2 is stable, REST, bearer-auth, and needs
+nothing but `fetch`, which workerd runs natively. **Framer second, behind a
+verification step** — it does now have a Server API (shipped February 2026,
+`framer-api` v0.1.27) with a real upsert-shaped CMS write path, which
+corrects the earlier note in this document that Framer had no adapter
+route. Two things remain unverified: whether a package declaring
+`engines: node >= 22` with a stateful transport runs under Cloudflare
+Workers at all, and how stable a 0.1.x open beta is to build against.
 
 Phases 2–4 are independent of each other; 1 unblocks the product.
 
