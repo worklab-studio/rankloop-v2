@@ -17,11 +17,7 @@ import {
   statusAfterVerify,
   verdictFor,
 } from "@/server/features/rankloop/outreach/linkVerify.logic";
-import {
-  kitGaps,
-  renderPayload,
-  type SubmissionKit,
-} from "@/server/features/rankloop/outreach/submissionKit.logic";
+import { kitGaps, renderPayload, type SubmissionKit } from "@/shared/submission-kit";
 import seedPack from "@/server/features/rankloop/outreach/data/seed-targets.json";
 import { AppError } from "@/server/lib/errors";
 
@@ -145,11 +141,19 @@ async function getBoard(projectId: string): Promise<{
   rows: ArmoryRow[];
   seedCheckedAt: string;
   kit: SubmissionKit | null;
+  /** What to prefill an empty kit with. A blank form asking for a product
+   *  name when the project already has one is busywork we can do ourselves. */
+  kitDefaults: { name: string; url: string };
   kitGaps: string[];
 }> {
-  const [targets, kit] = await Promise.all([
+  const [targets, kit, project] = await Promise.all([
     db.select().from(outreachTargets).where(eq(outreachTargets.projectId, projectId)),
     getKit(projectId),
+    db
+      .select({ name: projects.name, domain: projects.domain })
+      .from(projects)
+      .where(eq(projects.id, projectId))
+      .limit(1),
   ]);
 
   const candidates: (ArmoryCandidate & { row: (typeof targets)[number] })[] =
@@ -188,10 +192,15 @@ async function getBoard(projectId: string): Promise<{
     };
   });
 
+  const domain = project[0]?.domain ?? "";
   return {
     rows,
     seedCheckedAt: SEED_CHECKED_AT,
     kit,
+    kitDefaults: {
+      name: project[0]?.name ?? domain,
+      url: domain ? (/^https?:\/\//i.test(domain) ? domain : `https://${domain}`) : "",
+    },
     kitGaps: kitGaps(kit ?? {}),
   };
 }

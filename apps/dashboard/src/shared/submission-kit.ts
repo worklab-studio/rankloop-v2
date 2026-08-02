@@ -3,6 +3,11 @@
 //
 // Most directories are manual forms and always will be. The kit removes the
 // retyping, not the human — nothing here submits anything.
+//
+// In `shared/` because both sides need it: the server renders payloads for
+// the API, and the board renders them inline from the kit it already holds.
+// Reaching into a server feature from a client component would work and
+// would be the first thread of a knot.
 
 export interface SubmissionKit {
   name: string;

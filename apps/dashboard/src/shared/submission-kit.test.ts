@@ -5,7 +5,7 @@ import {
   renderPayload,
   truncateAtWord,
   type SubmissionKit,
-} from "./submissionKit.logic";
+} from "./submission-kit";
 
 function kit(over: Partial<SubmissionKit> = {}): SubmissionKit {
   return {

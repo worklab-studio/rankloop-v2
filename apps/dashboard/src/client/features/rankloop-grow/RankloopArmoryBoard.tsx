@@ -1,11 +1,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, ExternalLink, RefreshCw, Sparkles } from "lucide-react";
+import { Check, Copy, ExternalLink, RefreshCw, Sparkles } from "lucide-react";
+import { useState } from "react";
 import { getStandardErrorMessage } from "@/client/lib/error-messages";
 import {
   getRankloopArmory,
   seedRankloopArmory,
   verifyRankloopLinks,
 } from "@/serverFunctions/rankloopArmory";
+import { RankloopSubmissionKitModal } from "@/client/features/rankloop-grow/RankloopSubmissionKitModal";
+import { renderPayload, type SubmissionKit } from "@/shared/submission-kit";
 import type { ArmoryRow } from "@/server/features/rankloop/outreach/services/ArmoryService";
 
 // The Grow board (spec 0029): every place that could link to you or list
@@ -45,9 +48,48 @@ function StatusChip({ row }: { row: ArmoryRow }) {
   );
 }
 
-function TargetRow({ row }: { row: ArmoryRow }) {
+/** One field of the prepared listing, with its own copy button. Directory
+ *  forms are filled box by box, so the payload is copied box by box. */
+function PayloadField({
+  field,
+}: {
+  field: { label: string; value: string; truncated: boolean; limit: number | null };
+}) {
+  const [copied, setCopied] = useState(false);
   return (
-    <li className="flex items-start gap-3 border-b border-base-300 px-4 py-3 last:border-b-0">
+    <div className="flex items-start gap-2 border-b border-base-300/60 py-1.5 last:border-b-0">
+      <span className="w-32 shrink-0 pt-0.5 text-[11px] text-base-content/50">
+        {field.label}
+        {field.truncated ? (
+          <span className="ml-1 text-warning" title="Shortened at a word boundary to fit">
+            shortened
+          </span>
+        ) : null}
+      </span>
+      <span className="min-w-0 flex-1 text-xs">{field.value}</span>
+      <button
+        type="button"
+        className="btn btn-ghost btn-xs shrink-0 gap-1"
+        onClick={() => {
+          void navigator.clipboard.writeText(field.value).then(() => {
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1200);
+          });
+        }}
+      >
+        {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
+      </button>
+    </div>
+  );
+}
+
+function TargetRow({ row, kit }: { row: ArmoryRow; kit: SubmissionKit | null }) {
+  const [open, setOpen] = useState(false);
+  const fields = open && kit ? renderPayload(kit) : [];
+
+  return (
+    <li className="border-b border-base-300 last:border-b-0">
+    <div className="flex items-start gap-3 px-4 py-3">
       <span className="w-10 shrink-0 pt-0.5 text-right text-sm tabular-nums text-base-content/50">
         {row.score.toFixed(1)}
       </span>
@@ -80,22 +122,43 @@ function TargetRow({ row }: { row: ArmoryRow }) {
           </span>
         ) : null}
       </span>
-      {row.submissionUrl ? (
-        <a
-          href={row.submissionUrl}
-          target="_blank"
-          rel="noreferrer noopener"
-          className="btn btn-xs shrink-0 gap-1"
-        >
-          Open
-          <ExternalLink className="size-3" />
-        </a>
-      ) : null}
+      <span className="flex shrink-0 items-center gap-1">
+        {kit ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => setOpen((v) => !v)}
+          >
+            {open ? "Hide" : "Listing"}
+          </button>
+        ) : null}
+        {row.submissionUrl ? (
+          <a
+            href={row.submissionUrl}
+            target="_blank"
+            rel="noreferrer noopener"
+            className="btn btn-xs gap-1"
+          >
+            Open
+            <ExternalLink className="size-3" />
+          </a>
+        ) : null}
+      </span>
+    </div>
+
+    {open && kit ? (
+      <div className="border-t border-base-300 bg-base-200/40 px-4 py-2">
+        {fields.map((field) => (
+          <PayloadField key={field.label} field={field} />
+        ))}
+      </div>
+    ) : null}
     </li>
   );
 }
 
 export function RankloopArmoryBoard({ projectId }: { projectId: string }) {
+  const [kitOpen, setKitOpen] = useState(false);
   const queryClient = useQueryClient();
   const boardQuery = useQuery({
     queryKey: ["rankloopArmory", projectId],
@@ -200,22 +263,53 @@ export function RankloopArmoryBoard({ projectId }: { projectId: string }) {
       ) : null}
 
       {board.kitGaps.length > 0 ? (
-        <div className="rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
-          <p className="text-xs font-medium text-warning">
-            Your submission kit still needs {board.kitGaps.join(", ")}
-          </p>
-          <p className="mt-0.5 text-xs text-base-content/60">
-            Fill it once and every listing below is pre-written to that
-            directory&rsquo;s length limits.
-          </p>
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/30 bg-warning/5 px-4 py-3">
+          <div>
+            <p className="text-xs font-medium text-warning">
+              Your submission kit still needs {board.kitGaps.join(", ")}
+            </p>
+            <p className="mt-0.5 text-xs text-base-content/60">
+              Fill it once and every listing below is pre-written to that
+              directory&rsquo;s length limits.
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-sm"
+            onClick={() => setKitOpen(true)}
+          >
+            Fill it in
+          </button>
         </div>
-      ) : null}
+      ) : (
+        <div className="flex items-center justify-between gap-3 px-1">
+          <p className="text-xs text-base-content/50">
+            Listings render from your submission kit.
+          </p>
+          <button
+            type="button"
+            className="btn btn-ghost btn-xs"
+            onClick={() => setKitOpen(true)}
+          >
+            Edit kit
+          </button>
+        </div>
+      )}
 
       <ul className="overflow-hidden rounded-xl border border-base-300 bg-base-100">
         {board.rows.map((row) => (
-          <TargetRow key={row.id} row={row} />
+          <TargetRow key={row.id} row={row} kit={board.kit} />
         ))}
       </ul>
+
+      {kitOpen ? (
+        <RankloopSubmissionKitModal
+          projectId={projectId}
+          kit={board.kit}
+          defaults={board.kitDefaults}
+          onClose={() => setKitOpen(false)}
+        />
+      ) : null}
     </div>
   );
 }
