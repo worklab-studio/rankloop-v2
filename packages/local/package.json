@@ -1,0 +1,29 @@
+{
+  "name": "rankloop-local",
+  "version": "0.1.0",
+  "description": "Run rankloop's writing loop on your own machine: your CLI writes, the server's laws grade, a cron keeps it moving. Zero API keys required.",
+  "license": "MIT",
+  "type": "module",
+  "bin": {
+    "rankloop-local": "dist/rankloop-local.js"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "test:ci": "vitest run --reporter=dot",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.0",
+    "@types/node": "^24.0.0"
+  }
+}

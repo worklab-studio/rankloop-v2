@@ -79,7 +79,14 @@ an adapter exists.
   - PR #N — one per article: content file, internal-link injections into
     2–3 existing posts, sitemap + llms.txt updates. IndexNow ping on merge.
   - Merging is the human gate; auto-merge unlocks with earned autopilot.
-- **CMS.** WordPress + webhook (built). Framer/Webflow adapters: roadmap.
+- **CMS.** WordPress + webhook (built). Webflow then Framer: roadmap
+  (spec 0031 has the research).
+- **Laptop (`rankloop-local`).** On a machine with the dashboard on
+  localhost, a zero-dependency runner drives the agent path on a cron:
+  your own CLI writes (`claude -p` — no API key, no per-article cost), the
+  server's laws grade, violations feed back until it passes, and in repo
+  mode it commits, pushes, waits for the URL to answer 200, and reports —
+  which opens the receipt. Spec 0032; verified live.
 
 **Theme & structure.** Theme = tokens extracted from 3 crawled pages
 (fonts, color roles, radius, container width), rendered as an editable
