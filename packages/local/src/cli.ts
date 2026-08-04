@@ -10,6 +10,10 @@ Your CLI writes (claude -p by default), the server's laws grade, and a cron
 keeps it moving. No API keys: the writer is whatever CLI you already pay
 for, and a localhost dashboard needs no token.
 
+  rankloop-local init                  set up from inside your website repo
+                                       (detects stack, domain, content dir)
+  rankloop-local doctor                what is ready, what is blocking, and
+                                       the one thing to do next
   rankloop-local run [--watch]         work through approved proposals once
                                        (--watch: keep running on an interval)
       --every 30m                      watch interval (30m default; 15m min)
@@ -45,7 +49,7 @@ export const CRON_HELP = `# Every 30 minutes, one proposal per run, quiet unless
 `;
 
 export interface ParsedArgs {
-  command: "run" | "cron" | "help" | "version";
+  command: "run" | "init" | "doctor" | "cron" | "help" | "version";
   watch: boolean;
   everyMin: number;
   flags: {
@@ -88,8 +92,8 @@ export function parseArgs(argv: string[]): ParsedArgs {
     out.command = "version";
     return out;
   }
-  if (first === "cron") {
-    out.command = "cron";
+  if (first === "cron" || first === "init" || first === "doctor") {
+    out.command = first;
     return out;
   }
   const args = first === "run" ? rest : first === undefined ? [] : [first, ...rest];

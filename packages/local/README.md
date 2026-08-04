@@ -25,11 +25,19 @@ it is the user's own process on the user's own machine.
 ## Quick start
 
 ```bash
-# 1. dashboard running locally, a project with approved titles,
-#    Connect → Writing set to "agent"
-# 2.
-rankloop-local run --project <id-from-the-dashboard-url>
+cd ~/your-website          # your site's repo
+rankloop-local init        # detects framework, domain, content dir
+rankloop-local doctor      # says what is still blocking, and only that
+rankloop-local run         # write one
 ```
+
+`doctor` is the command to run whenever nothing seems to happen. It checks
+every layer and names the FIRST one that is shut — before it existed the
+only feedback was "no approved proposals are waiting", which is true and
+useless when the real problem is three layers up.
+
+Full walkthrough for the laptop → GitHub → Cloudflare setup:
+[docs/LAPTOP-SETUP.md](../../docs/LAPTOP-SETUP.md).
 
 Gated drafts land in `~/rankloop-drafts/`. To publish automatically, add a
 repo to `~/.config/rankloop/local.json`:
