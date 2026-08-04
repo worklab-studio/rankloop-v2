@@ -96,10 +96,17 @@ export async function runOnce(deps: RunDeps): Promise<RunSummary> {
     return summary;
   }
 
-  for (const proposal of ordered.slice(0, config.maxPerRun)) {
+  // The budget counts WORK, not iterations. Slicing the list before knowing
+  // which entries are already finished means one done proposal at the front
+  // consumes the whole run — with maxPerRun 1 and any finished item in the
+  // list, the new work is never reached and every cron tick is a no-op.
+  let worked = 0;
+  for (const proposal of ordered) {
+    if (worked >= config.maxPerRun) break;
     summary.handled++;
     try {
       const outcome = await handleProposal(deps, proposal);
+      if (outcome !== "skipped") worked++;
       if (outcome === "reported") summary.reported++;
       if (outcome === "drafted") summary.drafted++;
       if (outcome === "fatal") {
@@ -107,6 +114,10 @@ export async function runOnce(deps: RunDeps): Promise<RunSummary> {
         break;
       }
     } catch (error) {
+      // A failure is work attempted — it spent a generation or a network
+      // call, and retrying the whole list inside one run would multiply a
+      // transient outage by the number of proposals.
+      worked++;
       // One proposal's failure is not the run's. Log and move on; the
       // proposal stays approved and the next run tries again.
       log(

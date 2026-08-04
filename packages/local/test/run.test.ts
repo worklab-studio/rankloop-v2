@@ -330,6 +330,54 @@ describe("repo mode — the honesty rules", () => {
   });
 });
 
+describe("the per-run budget counts work, not iterations", () => {
+  it("skips past finished proposals to reach the new one", async () => {
+    // With maxPerRun 1 and a done proposal at the front, slicing the list
+    // first would make every cron tick a no-op forever.
+    const h = harness({
+      config: config({ maxPerRun: 1 }),
+      tools: {
+        rankloop_proposals: () =>
+          ok({
+            proposals: [
+              { proposalId: "prop-done", keyword: "done thing", article: null },
+              { proposalId: "prop-new", keyword: "new thing", article: null },
+            ],
+          }),
+      },
+      initialState: {
+        "prop-done": {
+          phase: "drafted",
+          slug: "done-thing",
+          file: "/drafts/done-thing.md",
+          updatedAt: "2026-08-03T09:00:00.000Z",
+        },
+      },
+    });
+    const summary = await runOnce(h.deps);
+    expect(summary.drafted).toBe(1);
+    expect(h.calls.filter((c) => c === "spawn")).toHaveLength(1);
+  });
+
+  it("still stops at the budget once real work is done", async () => {
+    const h = harness({
+      config: config({ maxPerRun: 1 }),
+      tools: {
+        rankloop_proposals: () =>
+          ok({
+            proposals: [
+              { proposalId: "prop-a", keyword: "a", article: null },
+              { proposalId: "prop-b", keyword: "b", article: null },
+            ],
+          }),
+      },
+    });
+    const summary = await runOnce(h.deps);
+    expect(summary.drafted).toBe(1);
+    expect(h.calls.filter((c) => c === "spawn")).toHaveLength(1);
+  });
+});
+
 describe("proposal selection", () => {
   it("skips rows whose article is already in flight", async () => {
     // A non-null article means the dashboard's own writer owns it; taking it
